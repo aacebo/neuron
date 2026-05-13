@@ -66,7 +66,7 @@ pub async fn create(
     }
 
     let model = sentiment::SentimentModel::new(Default::default())?;
-    let out = model.predict(&[message.text.as_str()]);
+    let out = model.predict([message.text.as_str()]);
 
     for sentiment in out {
         message.annotations.push(Annotation {
@@ -81,5 +81,6 @@ pub async fn create(
         });
     }
 
+    message = ctx.storage().messages().create(&message).await?;
     Ok(HttpResponse::Created().json(message))
 }

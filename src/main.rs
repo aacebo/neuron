@@ -32,6 +32,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(ctx.clone()))
             .wrap(RequestContextMiddleware)
             .service(routes::index::get)
+            .service(routes::chats::messages::create)
     })
     .bind(("0.0.0.0", config.port))?
     .run()
