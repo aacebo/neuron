@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Neuron Console{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-10" x-data="neuronConsole()">
+
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-white tracking-tight">Neuron Console</h1>
+        <p class="text-gray-400 mt-1 text-sm">Run text through the NLP pipeline and inspect annotations and artifacts.</p>
+    </div>
+
+    <form @submit.prevent="submit()" class="space-y-4">
+        <textarea
+            x-model="text"
+            rows="6"
+            placeholder="Type or paste a message..."
+            required
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm"
+        ></textarea>
+
+        <div class="flex items-center gap-4">
+            <button
+                type="submit"
+                :disabled="loading"
+                class="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            >
+                Analyze
+            </button>
+            <span x-show="loading" class="text-gray-400 text-sm">Processing…</span>
+        </div>
+    </form>
+
+    <div x-show="error" class="mt-6">
+        <p class="text-red-400 text-sm" x-text="error"></p>
+    </div>
+
+    <div x-show="result" class="mt-10 space-y-8">
+
+        <!-- Highlighted text view -->
+        <div>
+            <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Text</h2>
+            <div class="bg-gray-900 border border-gray-800 rounded-lg px-5 py-4 leading-relaxed text-sm font-mono">
+                <template x-for="(seg, i) in segments" :key="i">
+                    <span
+                        :class="highlightClass(seg.type)"
+                        :title="seg.type ? seg.type + ' · ' + seg.label + ' · ' + seg.score : ''"
+                        x-text="seg.text"
+                    ></span>
+                </template>
+            </div>
+        </div>
+
+        <!-- Two-column panels -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Annotations -->
+            <div>
+                <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Annotations</h2>
+                <template x-if="result && result.annotations.length === 0">
+                    <p class="text-gray-500 text-sm">None</p>
+                </template>
+                <div class="space-y-2">
+                    <template x-for="(ann, i) in (result ? result.annotations : [])" :key="i">
+                        <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 flex items-center gap-3 text-sm">
+                            <span
+                                class="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full"
+                                :class="badgeClass(ann.type)"
+                                x-text="ann.type"
+                            ></span>
+                            <span class="text-gray-200 truncate flex-1" x-text="ann.label"></span>
+                            <div class="shrink-0 flex items-center gap-2 w-24">
+                                <div class="flex-1 bg-gray-800 rounded-full h-1.5">
+                                    <div
+                                        class="bg-gray-400 h-1.5 rounded-full"
+                                        :style="'width:' + Math.round(ann.score * 100) + '%'"
+                                    ></div>
+                                </div>
+                                <span class="text-gray-500 text-xs w-8 text-right" x-text="ann.score.toFixed(2)"></span>
+                            </div>
+                            <template x-if="ann.spans && ann.spans.length > 0">
+                                <span
+                                    class="shrink-0 text-gray-600 text-xs font-mono"
+                                    x-text="ann.spans[0].start + '-' + ann.spans[0].end"
+                                ></span>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Artifacts -->
+            <div>
+                <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Artifacts</h2>
+                <template x-if="result && result.artifacts.length === 0">
+                    <p class="text-gray-500 text-sm">None</p>
+                </template>
+                <div class="space-y-4">
+                    <template x-for="(art, i) in (result ? result.artifacts : [])" :key="i">
+                        <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 text-sm">
+                            <template x-if="art.type === 'summary'">
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Summary</div>
+                                    <blockquote class="text-gray-300 leading-relaxed border-l-2 border-gray-700 pl-3 italic" x-text="art.text"></blockquote>
+                                </div>
+                            </template>
+                            <template x-if="art.type === 'embedding'">
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">
+                                        Embedding <span class="normal-case font-normal text-gray-600" x-text="art.vector.length + ' dims'"></span>
+                                    </div>
+                                    <code
+                                        class="text-gray-400 font-mono text-xs break-all"
+                                        x-text="'[' + art.vector.slice(0, 8).map(v => v.toFixed(3)).join(', ') + (art.vector.length > 8 ? ', …' : '') + ']'"
+                                    ></code>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Metadata footer -->
+        <div class="border-t border-gray-800 pt-4 flex flex-wrap gap-6 text-xs text-gray-600 font-mono">
+            <span>id: <span x-text="result ? result.id : ''"></span></span>
+            <span>source: <span x-text="result ? result.source : ''"></span></span>
+            <span>created: <span x-text="result ? result.created_at : ''"></span></span>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('neuronConsole', () => ({
+        text: '',
+        loading: false,
+        result: null,
+        error: null,
+
+        async submit() {
+            this.loading = true;
+            this.result = null;
+            this.error = null;
+            try {
+                const res = await fetch('/chats/console/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: this.text }),
+                });
+                if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+                this.result = await res.json();
+            } catch (e) {
+                this.error = e.message;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        get segments() {
+            if (!this.result) return [];
+            const text = this.result.text;
+            const anns = this.result.annotations ?? [];
+            const priority = { pii: 0, entity: 1, keyword: 2 };
+            const charAnn = new Array(text.length).fill(null);
+
+            const sorted = [...anns]
+                .filter(a => a.type !== 'sentiment' && a.type in priority)
+                .sort((a, b) => (priority[b.type] ?? 99) - (priority[a.type] ?? 99));
+
+            for (const ann of sorted) {
+                for (const span of ann.spans ?? []) {
+                    for (let i = span.start; i < span.end && i < text.length; i++) {
+                        charAnn[i] = ann;
+                    }
+                }
+            }
+
+            const segs = [];
+            let i = 0;
+            while (i < text.length) {
+                const cur = charAnn[i];
+                let j = i + 1;
+                while (j < text.length && charAnn[j] === cur) j++;
+                segs.push({
+                    text: text.slice(i, j),
+                    type: cur?.type ?? '',
+                    label: cur?.label ?? '',
+                    score: cur ? cur.score.toFixed(2) : '',
+                });
+                i = j;
+            }
+            return segs;
+        },
+
+        badgeClass(type) {
+            return ({
+                entity:    'bg-blue-900 text-blue-300',
+                pii:       'bg-red-900 text-red-300',
+                keyword:   'bg-yellow-900 text-yellow-300',
+                sentiment: 'bg-green-900 text-green-300',
+            })[type] ?? 'bg-gray-800 text-gray-400';
+        },
+
+        highlightClass(type) {
+            return ({
+                entity:  'bg-blue-900/60 text-blue-200 rounded px-0.5 cursor-default',
+                pii:     'bg-red-900/60 text-red-200 rounded px-0.5 cursor-default',
+                keyword: 'bg-yellow-900/60 text-yellow-200 rounded px-0.5 cursor-default',
+            })[type] ?? '';
+        },
+    }));
+});
+</script>
+{% endblock %}
