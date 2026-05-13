@@ -21,14 +21,15 @@ impl<'a> MessageStorage<'a> {
     pub async fn create(&self, message: &Message) -> Result<Message, sqlx::Error> {
         sqlx::query_as::<_, Message>(
             r#"
-            INSERT INTO messages (id, text, source, annotations, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, NOW(), NOW())
+            INSERT INTO messages (id, text, source, artifacts, annotations, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
             RETURNING *
             "#,
         )
         .bind(message.id)
         .bind(&message.text)
         .bind(message.source)
+        .bind(&message.artifacts)
         .bind(&message.annotations)
         .fetch_one(self.pool)
         .await
@@ -38,7 +39,7 @@ impl<'a> MessageStorage<'a> {
         sqlx::query_as::<_, Message>(
             r#"
             UPDATE messages
-            SET text = $2, source = $3, annotations = $4, updated_at = NOW()
+            SET text = $2, source = $3, artifacts = $4, annotations = $5, updated_at = NOW()
             WHERE id = $1
             RETURNING *
             "#,
@@ -46,6 +47,7 @@ impl<'a> MessageStorage<'a> {
         .bind(message.id)
         .bind(&message.text)
         .bind(message.source)
+        .bind(&message.artifacts)
         .bind(&message.annotations)
         .fetch_optional(self.pool)
         .await

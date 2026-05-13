@@ -1,0 +1,8 @@
+@base = http://localhost:8080
+
+POST {{base}}/chats/0/messages HTTP/1.1
+content-type: application/json
+
+{
+    "text": "After three unusually smooth months at Lumora Health, Priya flew back from Denver feeling uneasy about the company’s new billing AI. During the investor demo on Friday, executives praised the system for reducing claim review times, but Priya had just seen it misclassify several urgent patient claims and ignore warnings from the compliance team. She wanted the project to succeed, but the gap between the polished presentation and the actual risk made her wonder whether she should escalate the issue before the next hospital rollout."
+}
