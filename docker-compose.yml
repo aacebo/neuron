@@ -1,0 +1,17 @@
+name: neuron
+
+services:
+  postgres:
+    container_name: postgres
+    image: pgvector/pgvector:pg17
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: main
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    healthcheck:
+      test: pg_isready -U admin -d main
+      interval: 10s
+      timeout: 5s
+      retries: 5
