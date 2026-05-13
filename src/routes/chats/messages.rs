@@ -1,10 +1,15 @@
 use actix_web::Error;
 use actix_web::{HttpResponse, post};
+use rust_bert::pipelines::common::{ModelResource, ModelType, ONNXModelResources};
 use rust_bert::pipelines::keywords_extraction;
 use rust_bert::pipelines::ner;
 use rust_bert::pipelines::sentence_embeddings as embeddings;
 use rust_bert::pipelines::sentiment;
 use rust_bert::pipelines::summarization;
+use rust_bert::pipelines::token_classification::{
+    LabelAggregationOption, TokenClassificationConfig,
+};
+use rust_bert::resources::RemoteResource;
 use storage::types::Span;
 use storage::types::{Annotation, SummaryArtifact};
 use storage::types::{EmbeddingArtifact, Message};
@@ -39,6 +44,44 @@ pub async fn create(
                     text: entity.word,
                     score: entity.score,
                     spans: vec![Span::new(entity.offset.begin, entity.offset.end)],
+                });
+            }
+        }
+
+        let model = ner::NERModel::new(TokenClassificationConfig::new(
+            ModelType::Bert,
+            ModelResource::ONNX(ONNXModelResources {
+                encoder_resource: Some(Box::new(RemoteResource::new(
+                    "https://huggingface.co/rtrigoso/bert-small-pii-detection-ONNX/resolve/main/onnx/model.onnx",
+                    "bert-small-pii-detection",
+                ))),
+                ..Default::default()
+            }),
+            RemoteResource::new(
+                "https://huggingface.co/rtrigoso/bert-small-pii-detection-ONNX/resolve/main/config.json",
+                "bert-small-pii-detection",
+            ),
+            RemoteResource::new(
+                "https://huggingface.co/rtrigoso/bert-small-pii-detection-ONNX/resolve/main/vocab.txt",
+                "bert-small-pii-detection",
+            ),
+            None::<RemoteResource>,
+            false,
+            None,
+            None,
+            LabelAggregationOption::First,
+        ))
+        .map_err(|err| err.to_string())?;
+        let out = model.predict_full_entities(&[&message.text]);
+
+        for entities in out {
+            for entity in entities {
+                message.annotations.push(Annotation {
+                    r#type: String::from("pii"),
+                    label: entity.label.to_lowercase(),
+                    text: entity.word,
+                    score: entity.score,
+                    spans: vec![Span::new(entity.offset.begin + 1, entity.offset.end + 1)],
                 });
             }
         }
