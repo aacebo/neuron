@@ -30,7 +30,12 @@ pub async fn create(
             for entity in entities {
                 message.annotations.push(Annotation {
                     r#type: String::from("entity"),
-                    label: entity.label,
+                    label: match entity.label.as_str() {
+                        "ORG" => "organization".to_string(),
+                        "PER" => "person".to_string(),
+                        "LOC" => "location".to_string(),
+                        other => other.to_lowercase(), // Fallback for safety
+                    },
                     text: entity.word,
                     score: entity.score,
                     spans: vec![Span::new(entity.offset.begin, entity.offset.end)],
