@@ -9,3 +9,18 @@ pub struct Message {
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
+
+impl Message {
+    pub fn new(text: impl Into<String>) -> Self {
+        let now = chrono::Utc::now();
+
+        Self {
+            id: uuid::Uuid::new_v4(),
+            source: MessageSource::Unknown,
+            text: text.into(),
+            annotations: sqlx::types::Json::from(vec![]),
+            created_at: now,
+            updated_at: now,
+        }
+    }
+}
