@@ -9,8 +9,8 @@ doctest = false
 
 [dependencies]
 ort = { version = "1.16.3", features = ["download-binaries"] }
-tch = "0.17"
-console = "0.16"
+tch = { version = "0.17" }
+console = { version = "0.16" }
 rust-bert = { version = "0.23", features = ["onnx"] }
-
+serde = { version = "1", features = ["derive", "rc"] }
 reflect = { path = "../reflect", features = ["serde", "macros"] }

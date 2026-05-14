@@ -726,6 +726,7 @@ dependencies = [
  "ort",
  "reflect",
  "rust-bert",
+ "serde",
  "tch",
 ]
 
