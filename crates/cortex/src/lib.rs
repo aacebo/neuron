@@ -1,3 +1,3 @@
-pub struct Pipeline {
+pub mod types;
 
-}
+pub struct Pipeline {}

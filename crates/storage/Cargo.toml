@@ -7,6 +7,9 @@ license.workspace = true
 [lib]
 doctest = false
 
+[lints]
+workspace = true
+
 [dependencies]
 uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }

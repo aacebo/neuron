@@ -8,6 +8,9 @@ version = "0.0.0"
 edition = "2024"
 license = "MIT"
 
+[workspace.lints.clippy]
+type_complexity = "allow"
+
 [package]
 name = "neuron"
 version.workspace = true

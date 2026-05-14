@@ -12,3 +12,5 @@ ort = { version = "1.16.3", features = ["download-binaries"] }
 tch = "0.17"
 console = "0.16"
 rust-bert = { version = "0.23", features = ["onnx"] }
+
+reflect = { path = "../reflect", features = ["serde", "macros"] }
