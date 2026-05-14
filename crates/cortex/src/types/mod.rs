@@ -1,7 +1,7 @@
 mod annotation;
-mod input;
+mod artifact;
 mod span;
 
 pub use annotation::*;
-pub use input::*;
+pub use artifact::*;
 pub use span::*;
