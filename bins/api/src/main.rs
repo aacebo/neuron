@@ -19,7 +19,7 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to create pool");
 
-    sqlx::migrate!("crates/storage/migrations")
+    sqlx::migrate!("../../crates/storage/migrations")
         .run(&pool)
         .await
         .expect("Failed to run migrations");
