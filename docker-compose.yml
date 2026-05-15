@@ -53,6 +53,7 @@ services:
       context: .
       dockerfile: bins/executor/Dockerfile
     environment:
+      DATABASE_URL: postgres://admin:admin@postgres:5432/main
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
     depends_on:
       rabbitmq:

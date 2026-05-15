@@ -1,4 +1,3 @@
-use amqp::{Action, Key};
 use sqlx::postgres::PgPoolOptions;
 
 mod config;
@@ -18,12 +17,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let socket = amqp::new(&config.rabbitmq_url)
         .with_app_id("neuron::executor")
+        .with_queue(amqp::Key::new("message", amqp::Action::Create))
         .connect()
         .await
         .expect("Failed to connect to AMQP");
 
     let _ctx = Context::new(pool, socket.clone());
-    let mut consumer = socket.consume(Key::new("message", Action::Create)).await?;
+    let mut consumer = socket.consume(amqp::Key::new("message", amqp::Action::Create)).await?;
 
     println!("waiting for events...");
 

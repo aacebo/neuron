@@ -26,6 +26,7 @@ async fn main() -> std::io::Result<()> {
 
     let socket = amqp::new(&config.rabbitmq_url)
         .with_app_id("neuron::api")
+        .with_queue(amqp::Key::new("message", amqp::Action::Create))
         .connect()
         .await
         .expect("Failed to connect to AMQP");
