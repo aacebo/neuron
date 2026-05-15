@@ -12,5 +12,5 @@ uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 sqlx = { version = "0.8", features = ["migrate"] }
 
-amqp.path = "../../crates/amqp"
-storage.path = "../../crates/storage"
+amqp = { path = "../../crates/amqp" }
+storage = { path = "../../crates/storage" }

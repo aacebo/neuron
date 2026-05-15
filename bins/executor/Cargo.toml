@@ -8,6 +8,7 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+serde = { version = "1", features = ["default", "derive"] }
 tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
 
-amqp.path = "../../crates/amqp"
+amqp = { path = "../../crates/amqp" }
