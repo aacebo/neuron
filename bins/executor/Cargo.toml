@@ -15,4 +15,5 @@ sqlx = { version = "0.8", features = ["postgres"] }
 tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
 
 amqp = { path = "../../crates/amqp" }
+cortex = { path = "../../crates/cortex" }
 storage = { path = "../../crates/storage" }

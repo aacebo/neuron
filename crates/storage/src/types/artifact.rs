@@ -1,22 +1,3 @@
-use pgvector::Vector;
-
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ArtifactContent {
-    Summary(SummaryArtifact),
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct SummaryArtifact {
-    pub text: String,
-}
-
-impl From<SummaryArtifact> for ArtifactContent {
-    fn from(value: SummaryArtifact) -> Self {
-        Self::Summary(value)
-    }
-}
-
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, sqlx::FromRow)]
 pub struct MessageArtifact {
     pub id: uuid::Uuid,
@@ -24,7 +5,7 @@ pub struct MessageArtifact {
     pub r#type: String,
     pub content: sqlx::types::Json<ArtifactContent>,
     #[serde(with = "embedding::serde")]
-    pub embedding: Option<Vector>,
+    pub embedding: Option<pgvector::Vector>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -40,9 +21,26 @@ impl MessageArtifact {
             message_id,
             r#type: r#type.into(),
             content: sqlx::types::Json::from(content),
-            embedding: embedding.map(Vector::from),
+            embedding: embedding.map(pgvector::Vector::from),
             created_at: chrono::Utc::now(),
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ArtifactContent {
+    Summary(SummaryArtifact),
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SummaryArtifact {
+    pub text: String,
+}
+
+impl From<SummaryArtifact> for ArtifactContent {
+    fn from(value: SummaryArtifact) -> Self {
+        Self::Summary(value)
     }
 }
 

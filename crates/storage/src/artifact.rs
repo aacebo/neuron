@@ -18,7 +18,7 @@ impl<'a> ArtifactStorage<'a> {
             .await
     }
 
-    pub async fn list_by_message(
+    pub async fn get_by_message(
         &self,
         message_id: uuid::Uuid,
     ) -> Result<Vec<MessageArtifact>, sqlx::Error> {
