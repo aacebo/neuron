@@ -10,7 +10,7 @@ askama = "0.16"
 serde = { version = "1", features = ["default", "derive"] }
 uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-sqlx = { version = "0.8", features = ["migrate"] }
+sqlx = { version = "0.8", features = ["migrate", "postgres"] }
 
 amqp = { path = "../../crates/amqp" }
 storage = { path = "../../crates/storage" }

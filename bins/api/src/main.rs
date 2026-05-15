@@ -25,7 +25,7 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to run migrations");
 
     let socket = amqp::new(&config.rabbitmq_url)
-        .with_app_id("neuron-api")
+        .with_app_id("neuron::api")
         .connect()
         .await
         .expect("Failed to connect to AMQP");
