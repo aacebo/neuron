@@ -6,13 +6,15 @@ use storage::Storage;
 #[derive(Clone)]
 pub struct Context {
     pool: PgPool,
+    socket: amqp::Socket,
     start_time: DateTime<Utc>,
 }
 
 impl Context {
-    pub fn new(pool: PgPool) -> Self {
+    pub fn new(pool: PgPool, socket: amqp::Socket) -> Self {
         Self {
             pool,
+            socket,
             start_time: Utc::now(),
         }
     }
@@ -27,5 +29,9 @@ impl Context {
 
     pub fn pool(&self) -> &PgPool {
         &self.pool
+    }
+
+    pub fn amqp(&self) -> &amqp::Socket {
+        &self.socket
     }
 }

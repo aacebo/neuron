@@ -24,7 +24,13 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to run migrations");
 
-    let ctx = Context::new(pool);
+    let socket = amqp::new(&config.rabbitmq_url)
+        .with_app_id("neuron-api")
+        .connect()
+        .await
+        .expect("Failed to connect to AMQP");
+
+    let ctx = Context::new(pool, socket);
     println!("Starting server at http://0.0.0.0:{}", config.port);
 
     HttpServer::new(move || {
