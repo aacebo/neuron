@@ -4,16 +4,19 @@ pub mod types;
 
 mod annotation;
 mod artifact;
+mod job;
 mod message;
 
 pub use annotation::*;
 pub use artifact::*;
+pub use job::*;
 pub use message::*;
 
 pub struct Storage<'a> {
     _messages: MessageStorage<'a>,
     _annotations: AnnotationStorage<'a>,
     _artifacts: ArtifactStorage<'a>,
+    _jobs: JobStorage<'a>,
 }
 
 impl<'a> Storage<'a> {
@@ -22,6 +25,7 @@ impl<'a> Storage<'a> {
             _messages: MessageStorage::new(pool),
             _annotations: AnnotationStorage::new(pool),
             _artifacts: ArtifactStorage::new(pool),
+            _jobs: JobStorage::new(pool),
         }
     }
 
@@ -35,5 +39,9 @@ impl<'a> Storage<'a> {
 
     pub fn artifacts(&self) -> &ArtifactStorage<'a> {
         &self._artifacts
+    }
+
+    pub fn jobs(&self) -> &JobStorage<'a> {
+        &self._jobs
     }
 }

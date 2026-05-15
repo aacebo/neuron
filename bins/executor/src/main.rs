@@ -2,9 +2,12 @@ use sqlx::postgres::PgPoolOptions;
 
 mod config;
 mod context;
+mod events;
 
 pub use config::Config;
 pub use context::Context;
+
+use crate::context::EventContext;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,18 +25,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .expect("Failed to connect to AMQP");
 
-    let _ctx = Context::new(pool, socket.clone());
+    let ctx = Context::new(pool, socket.clone());
     let mut consumer = socket
         .consume(amqp::Key::new("message", amqp::Action::Create))
         .await?;
 
     println!("waiting for events...");
 
-    while let Some(res) = consumer.dequeue::<String>().await {
-        let _ = match res {
+    while let Some(res) = consumer.dequeue::<storage::types::Message>().await {
+        let (delivery, event) = match res {
             Err(err) => return Err(err.into()),
             Ok(v) => v,
         };
+
+        events::message::on_create(EventContext::new(&ctx, &delivery, &event)).await?;
     }
 
     Ok(())

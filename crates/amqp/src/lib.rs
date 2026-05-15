@@ -9,6 +9,7 @@ pub use consumer::*;
 pub use error::*;
 pub use event::*;
 pub use key::*;
+pub use lapin;
 pub use producer::*;
 pub use socket::*;
 
