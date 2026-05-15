@@ -23,7 +23,7 @@ impl<'a> Routine for EntityExtraction<'a> {
 
         for entities in out {
             for entity in entities {
-                output.annotations.push(types::Annotation {
+                output.annotations.push(types::CortexAnnotation {
                     r#type: String::from("entity"),
                     label: match entity.label.as_str() {
                         "ORG" => "organization".to_string(),

@@ -27,7 +27,7 @@ impl<'a> Routine for Summarization<'a> {
         for summary in out {
             output
                 .artifacts
-                .push(types::SummaryArtifact { text: summary }.into());
+                .push(types::CortexSummaryArtifact { text: summary }.into());
         }
 
         Ok(output)

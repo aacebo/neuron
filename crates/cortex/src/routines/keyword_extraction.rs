@@ -23,7 +23,7 @@ impl<'a> Routine for KeywordExtraction<'a> {
 
         for keywords in out {
             for keyword in keywords {
-                output.annotations.push(types::Annotation {
+                output.annotations.push(types::CortexAnnotation {
                     r#type: String::from("keyword"),
                     label: keyword.text.clone(),
                     text: keyword.text,

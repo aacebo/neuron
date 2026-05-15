@@ -24,7 +24,7 @@ impl<'a> Routine for Embeddings<'a> {
         for vector in out {
             output
                 .artifacts
-                .push(types::EmbeddingArtifact { vector }.into());
+                .push(types::CortexEmbeddingArtifact { vector }.into());
         }
 
         Ok(output)

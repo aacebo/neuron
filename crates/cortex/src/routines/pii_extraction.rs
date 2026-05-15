@@ -23,7 +23,7 @@ impl<'a> Routine for PIIExtraction<'a> {
 
         for entities in out {
             for entity in entities {
-                output.annotations.push(types::Annotation {
+                output.annotations.push(types::CortexAnnotation {
                     r#type: String::from("pii"),
                     label: entity.label.to_lowercase(),
                     text: entity.word,

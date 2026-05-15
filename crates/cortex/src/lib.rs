@@ -18,8 +18,8 @@ pub struct CortexInput<'a> {
 
 #[derive(Debug, Default, Clone, serde::Serialize)]
 pub struct CortexOutput {
-    pub annotations: Vec<types::Annotation>,
-    pub artifacts: Vec<types::Artifact>,
+    pub annotations: Vec<types::CortexAnnotation>,
+    pub artifacts: Vec<types::CortexArtifact>,
 }
 
 #[derive(Default)]

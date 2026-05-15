@@ -1,7 +1,7 @@
 use crate::types::Span;
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct Annotation {
+pub struct CortexAnnotation {
     pub r#type: String,
     pub label: String,
     pub text: String,

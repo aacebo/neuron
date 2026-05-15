@@ -27,7 +27,7 @@ impl<'a> Routine for Sentiment<'a> {
                 sentiment::SentimentPolarity::Positive => "positive",
             };
 
-            output.annotations.push(types::Annotation {
+            output.annotations.push(types::CortexAnnotation {
                 r#type: String::from("sentiment"),
                 label: polarity.to_string(),
                 text: polarity.to_string(),
