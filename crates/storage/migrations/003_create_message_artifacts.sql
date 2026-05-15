@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS message_artifacts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_message_artifacts_type       ON message_artifacts(type);
-CREATE INDEX IF NOT EXISTS idx_message_artifacts_embedding  ON message_artifacts(embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_message_artifacts_embedding  ON message_artifacts USING hnsw(embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_message_artifacts_created_at ON message_artifacts(created_at);
