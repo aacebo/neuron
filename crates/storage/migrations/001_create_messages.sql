@@ -2,8 +2,6 @@ CREATE TABLE IF NOT EXISTS messages (
     id          UUID        PRIMARY KEY NOT NULL,
     source      TEXT        NOT NULL,
     text        TEXT        NOT NULL,
-    artifacts   JSONB       NOT NULL DEFAULT '[]'::jsonb,
-    annotations JSONB       NOT NULL DEFAULT '[]'::jsonb,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
