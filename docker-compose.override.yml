@@ -1,0 +1,39 @@
+# Dev-only override. Compose auto-merges this with docker-compose.yml for local
+# `docker compose up`. CI/prod should ignore it, e.g.:
+#   docker compose -f docker-compose.yml up
+#
+# It bind-mounts the workspace source and persists Cargo's `target/` in named
+# volumes so code changes don't require an image rebuild and don't recompile
+# from scratch on every restart. The container runs `cargo run` instead of the
+# baked binary, so the builder stage's toolchain must be present at runtime --
+# we override the image target to the `builder` stage and tag it under a
+# distinct *-dev image name so it never collides with the prod runtime image
+# (mixing them causes `exec: "cargo": not found`, since the prod stage has no
+# Rust toolchain). Run `docker compose up --build` after pulling these changes.
+services:
+  api:
+    image: neuron-api-dev
+    build:
+      target: builder
+    working_dir: /app
+    volumes:
+      - .:/app
+      - api-target:/app/target
+      - cargo-registry:/usr/local/cargo/registry
+    command: cargo run --package api
+
+  executor:
+    image: neuron-executor-dev
+    build:
+      target: builder
+    working_dir: /app
+    volumes:
+      - .:/app
+      - executor-target:/app/target
+      - cargo-registry:/usr/local/cargo/registry
+    command: cargo run --package executor
+
+volumes:
+  api-target:
+  executor-target:
+  cargo-registry:

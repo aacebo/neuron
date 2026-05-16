@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .expect("Failed to connect to AMQP");
 
-    let ctx = Context::new(pool, socket.clone());
+    let ctx = Context::new(&pool, &socket);
     let mut consumer = socket
         .consume(amqp::Key::new("message", amqp::Action::Create))
         .await?;

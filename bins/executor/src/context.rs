@@ -6,14 +6,14 @@ use sqlx::PgPool;
 use storage::Storage;
 
 #[derive(Clone)]
-pub struct Context {
-    pool: PgPool,
-    socket: amqp::Socket,
+pub struct Context<'a> {
+    pool: &'a PgPool,
+    socket: &'a amqp::Socket,
     start_time: DateTime<Utc>,
 }
 
-impl Context {
-    pub fn new(pool: PgPool, socket: amqp::Socket) -> Self {
+impl<'a> Context<'a> {
+    pub fn new(pool: &'a PgPool, socket: &'a amqp::Socket) -> Self {
         Self {
             pool,
             socket,
@@ -30,17 +30,17 @@ impl Context {
     }
 
     pub fn pool(&self) -> &PgPool {
-        &self.pool
+        self.pool
     }
 
     pub fn amqp(&self) -> &amqp::Socket {
-        &self.socket
+        self.socket
     }
 }
 
 #[derive(Clone)]
 pub struct EventContext<'a, T> {
-    ctx: &'a Context,
+    ctx: &'a Context<'a>,
     delivery: &'a amqp::lapin::message::Delivery,
     event: &'a amqp::Event<T>,
 }
@@ -81,7 +81,7 @@ impl<'a, T> EventContext<'a, T> {
 }
 
 impl<'a, T> std::ops::Deref for EventContext<'a, T> {
-    type Target = Context;
+    type Target = Context<'a>;
 
     fn deref(&self) -> &Self::Target {
         self.ctx

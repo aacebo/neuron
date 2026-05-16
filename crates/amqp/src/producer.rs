@@ -21,11 +21,15 @@ impl<'a> SocketProducer<'a> {
         event: Event<TBody>,
     ) -> Result<(), AMQPError> {
         let payload = serde_json::to_vec(&event)?;
+        // Routing key must match the consumer's queue bind key
+        // (socket.rs binds with `key.to_string()` = "<entity>.<action>").
+        // `basic_publish`'s 2nd arg is the routing key, not a queue name.
+        let routing_key = event.key.to_string();
         self.socket
             .channel()
             .basic_publish(
                 event.key.exchange(),
-                event.key.queue(),
+                &routing_key,
                 options::BasicPublishOptions::default(),
                 &payload,
                 protocol::basic::AMQPProperties::default()
