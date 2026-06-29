@@ -41,6 +41,8 @@ async fn main() -> std::io::Result<()> {
             .service(routes::index::get)
             .service(routes::console::get)
             .service(routes::chats::messages::create)
+            .service(routes::messages::get::get)
+            .service(routes::messages::events::events)
     })
     .bind(("0.0.0.0", config.port))?
     .run()
