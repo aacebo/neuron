@@ -13,6 +13,7 @@ uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 sqlx = { version = "0.8", features = ["postgres"] }
 tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
+rust-bert = { version = "0.23", features = ["remote"] }
 
 amqp = { path = "../../crates/amqp" }
 cortex = { path = "../../crates/cortex" }

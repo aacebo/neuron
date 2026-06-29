@@ -18,11 +18,11 @@ impl<'a> Routine for Summarization<'a> {
     }
 
     fn invoke(&self, input: CortexInput<'_>) -> Result<CortexOutput, CortexError> {
+        let mut output = CortexOutput::default();
         let out = self
             .model
             .summarize(input.text)
             .map_err(CortexError::from)?;
-        let mut output = CortexOutput::default();
 
         for summary in out {
             output

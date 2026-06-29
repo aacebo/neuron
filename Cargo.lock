@@ -1437,6 +1437,7 @@ dependencies = [
  "amqp",
  "chrono",
  "cortex",
+ "rust-bert",
  "serde",
  "sqlx",
  "storage",

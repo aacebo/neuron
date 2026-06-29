@@ -11,6 +11,20 @@ impl<'a> MessageStorage<'a> {
         Self { pool }
     }
 
+    pub async fn get_by_job(&self, job_id: uuid::Uuid) -> Result<Vec<Message>, sqlx::Error> {
+        sqlx::query_as::<_, Message>(
+            r#"
+            SELECT messages.*
+            FROM messages_jobs
+            LEFT JOIN messages ON messages.id = messages_jobs.message_id
+            WHERE messages_jobs.job_id = $1
+            "#,
+        )
+        .bind(job_id)
+        .fetch_all(self.pool)
+        .await
+    }
+
     pub async fn get(&self, id: uuid::Uuid) -> Result<Option<Message>, sqlx::Error> {
         sqlx::query_as::<_, Message>("SELECT * FROM messages WHERE id = $1")
             .bind(id)
@@ -33,7 +47,7 @@ impl<'a> MessageStorage<'a> {
         .await
     }
 
-    pub async fn update(&self, message: &Message) -> Result<Option<Message>, sqlx::Error> {
+    pub async fn update(&self, message: &Message) -> Result<Message, sqlx::Error> {
         sqlx::query_as::<_, Message>(
             r#"
             UPDATE messages
@@ -45,7 +59,7 @@ impl<'a> MessageStorage<'a> {
         .bind(message.id)
         .bind(message.source)
         .bind(&message.text)
-        .fetch_optional(self.pool)
+        .fetch_one(self.pool)
         .await
     }
 

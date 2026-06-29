@@ -9,14 +9,16 @@ use storage::Storage;
 pub struct Context<'a> {
     pool: &'a PgPool,
     socket: &'a amqp::Socket,
+    cortex: &'a cortex::Cortex,
     start_time: DateTime<Utc>,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(pool: &'a PgPool, socket: &'a amqp::Socket) -> Self {
+    pub fn new(pool: &'a PgPool, socket: &'a amqp::Socket, cortex: &'a cortex::Cortex) -> Self {
         Self {
             pool,
             socket,
+            cortex,
             start_time: Utc::now(),
         }
     }
@@ -35,6 +37,10 @@ impl<'a> Context<'a> {
 
     pub fn amqp(&self) -> &amqp::Socket {
         self.socket
+    }
+
+    pub fn cortex(&self) -> &cortex::Cortex {
+        self.cortex
     }
 }
 

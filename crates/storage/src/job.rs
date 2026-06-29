@@ -76,8 +76,8 @@ impl<'a> JobStorage<'a> {
                 VALUES ($1, $2, NOW())
                 "#,
             )
-            .bind(&job.id)
             .bind(&message_id)
+            .bind(&job.id)
             .execute(self.pool)
             .await?;
         }
@@ -85,7 +85,7 @@ impl<'a> JobStorage<'a> {
         Ok(res)
     }
 
-    pub async fn update(&self, job: &Job) -> Result<Option<Job>, sqlx::Error> {
+    pub async fn update(&self, job: &Job) -> Result<Job, sqlx::Error> {
         sqlx::query_as::<_, Job>(
             r#"
             UPDATE jobs
@@ -105,7 +105,7 @@ impl<'a> JobStorage<'a> {
         .bind(&job.attempts)
         .bind(&job.started_at)
         .bind(&job.ended_at)
-        .fetch_optional(self.pool)
+        .fetch_one(self.pool)
         .await
     }
 

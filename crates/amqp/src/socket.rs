@@ -32,11 +32,12 @@ impl Socket {
             return Err(AMQPError::custom("not-found", "queue not found"));
         }
 
+        let consumer_tag = format!("{}::{}", self.app_id(), key);
         let consumer = self
             .channel()
             .basic_consume(
                 key.queue(),
-                self.app_id(),
+                &consumer_tag,
                 lapin::options::BasicConsumeOptions::default(),
                 lapin::types::FieldTable::default(),
             )

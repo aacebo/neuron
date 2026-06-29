@@ -20,3 +20,35 @@ pub struct Pipeline<'a> {
     pub sentiment: Option<Sentiment<'a>>,
     pub summarization: Option<Summarization<'a>>,
 }
+
+impl<'a> Pipeline<'a> {
+    pub fn routines(&self) -> Vec<&dyn crate::Routine> {
+        let mut v: Vec<&dyn crate::Routine> = Vec::new();
+
+        if let Some(r) = &self.embeddings {
+            v.push(r);
+        }
+
+        if let Some(r) = &self.entity_extraction {
+            v.push(r);
+        }
+
+        if let Some(r) = &self.keyword_extraction {
+            v.push(r);
+        }
+
+        if let Some(r) = &self.pii_extraction {
+            v.push(r);
+        }
+
+        if let Some(r) = &self.sentiment {
+            v.push(r);
+        }
+
+        if let Some(r) = &self.summarization {
+            v.push(r);
+        }
+
+        v
+    }
+}

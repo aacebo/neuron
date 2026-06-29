@@ -56,7 +56,7 @@ impl<'a> AnnotationStorage<'a> {
     pub async fn update(
         &self,
         annotation: &MessageAnnotation,
-    ) -> Result<Option<MessageAnnotation>, sqlx::Error> {
+    ) -> Result<MessageAnnotation, sqlx::Error> {
         sqlx::query_as::<_, MessageAnnotation>(
             r#"
             UPDATE message_annotations
@@ -71,7 +71,7 @@ impl<'a> AnnotationStorage<'a> {
         .bind(&annotation.text)
         .bind(annotation.score)
         .bind(&annotation.spans)
-        .fetch_optional(self.pool)
+        .fetch_one(self.pool)
         .await
     }
 

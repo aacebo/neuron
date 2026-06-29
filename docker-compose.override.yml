@@ -1,16 +1,3 @@
-# Dev-only override. Compose auto-merges this with docker-compose.yml for local
-# `docker compose up`. CI/prod should ignore it, e.g.:
-#   docker compose -f docker-compose.yml up
-#
-# It bind-mounts the workspace source and persists Cargo's `target/` in named
-# volumes so code changes don't require an image rebuild and don't recompile
-# from scratch on every restart. The container runs `cargo run` instead of the
-# baked binary, so the builder stage's toolchain must be present at runtime --
-# we override the image target to the `builder` stage.
-#
-# api (rust:alpine/musl) and executor (rust:bookworm/glibc) must NOT share a
-# Cargo registry volume -- build-script outputs are platform-specific and mixing
-# them corrupts the cache.
 services:
   api:
     build:
@@ -21,6 +8,11 @@ services:
       - api-target:/app/target
       - api-cargo-registry:/usr/local/cargo/registry
     command: cargo run --package api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   executor:
     build:
@@ -31,6 +23,11 @@ services:
       - executor-target:/app/target
       - executor-cargo-registry:/usr/local/cargo/registry
     command: cargo run --package executor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   api-target:

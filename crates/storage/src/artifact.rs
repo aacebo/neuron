@@ -48,10 +48,7 @@ impl<'a> ArtifactStorage<'a> {
         .await
     }
 
-    pub async fn update(
-        &self,
-        artifact: &MessageArtifact,
-    ) -> Result<Option<MessageArtifact>, sqlx::Error> {
+    pub async fn update(&self, artifact: &MessageArtifact) -> Result<MessageArtifact, sqlx::Error> {
         sqlx::query_as::<_, MessageArtifact>(
             r#"
             UPDATE message_artifacts
@@ -64,7 +61,7 @@ impl<'a> ArtifactStorage<'a> {
         .bind(&artifact.r#type)
         .bind(&artifact.content)
         .bind(&artifact.embedding)
-        .fetch_optional(self.pool)
+        .fetch_one(self.pool)
         .await
     }
 
