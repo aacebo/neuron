@@ -1,7 +1,7 @@
 use cortex::CortexInput;
 use cortex::types::CortexArtifact;
 use storage::types::{
-    ArtifactContent, Job, MessageAnnotation, MessageArtifact, Span, SummaryArtifact,
+    ArtifactContent, Job, MessageAnnotation, MessageArtifact, Span, TextArtifact,
 };
 
 use crate::context::EventContext;
@@ -79,21 +79,15 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn st
                 .await?;
         }
 
-        for artifact in &output.artifacts {
+        for artifact in output.artifacts {
             let row = match artifact {
-                CortexArtifact::Summary(s) => MessageArtifact::new(
+                CortexArtifact::Text(s) => MessageArtifact::new(
                     message_id,
-                    "summary",
-                    ArtifactContent::Summary(SummaryArtifact {
+                    s.name,
+                    ArtifactContent::Text(TextArtifact {
                         text: s.text.clone(),
                     }),
-                    None,
-                ),
-                CortexArtifact::Embedding(e) => MessageArtifact::new(
-                    message_id,
-                    "embedding",
-                    ArtifactContent::None,
-                    Some(e.vector.clone()),
+                    s.vector,
                 ),
             };
 

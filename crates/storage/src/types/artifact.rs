@@ -2,7 +2,7 @@
 pub struct MessageArtifact {
     pub id: uuid::Uuid,
     pub message_id: uuid::Uuid,
-    pub r#type: String,
+    pub name: String,
     pub content: sqlx::types::Json<ArtifactContent>,
     #[serde(with = "embedding::serde")]
     pub embedding: Option<pgvector::Vector>,
@@ -12,14 +12,14 @@ pub struct MessageArtifact {
 impl MessageArtifact {
     pub fn new(
         message_id: uuid::Uuid,
-        r#type: impl Into<String>,
+        name: impl Into<String>,
         content: ArtifactContent,
         embedding: Option<Vec<f32>>,
     ) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             message_id,
-            r#type: r#type.into(),
+            name: name.into(),
             content: sqlx::types::Json::from(content),
             embedding: embedding.map(pgvector::Vector::from),
             created_at: chrono::Utc::now(),
@@ -30,17 +30,17 @@ impl MessageArtifact {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ArtifactContent {
-    Summary(SummaryArtifact),
+    Text(TextArtifact),
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct SummaryArtifact {
+pub struct TextArtifact {
     pub text: String,
 }
 
-impl From<SummaryArtifact> for ArtifactContent {
-    fn from(value: SummaryArtifact) -> Self {
-        Self::Summary(value)
+impl From<TextArtifact> for ArtifactContent {
+    fn from(value: TextArtifact) -> Self {
+        Self::Text(value)
     }
 }
 

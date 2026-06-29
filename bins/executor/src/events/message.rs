@@ -7,7 +7,6 @@ pub async fn on_create<'a>(
     ctx: EventContext<'a, storage::types::Message>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let msg = &ctx.event().body;
-    println!("{:#?}", msg);
     let storage = ctx.storage();
     let job = storage
         .jobs()

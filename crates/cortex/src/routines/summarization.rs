@@ -1,14 +1,18 @@
-use rust_bert::pipelines::summarization;
+use rust_bert::pipelines::{sentence_embeddings, summarization};
 
 use crate::{CortexError, CortexInput, CortexOutput, Routine, types};
 
 pub struct Summarization<'a> {
     model: &'a summarization::SummarizationModel,
+    embed_model: Option<&'a sentence_embeddings::SentenceEmbeddingsModel>,
 }
 
 impl<'a> Summarization<'a> {
-    pub fn new(model: &'a summarization::SummarizationModel) -> Self {
-        Self { model }
+    pub fn new(
+        model: &'a summarization::SummarizationModel,
+        embed_model: Option<&'a sentence_embeddings::SentenceEmbeddingsModel>,
+    ) -> Self {
+        Self { model, embed_model }
     }
 }
 
@@ -27,7 +31,22 @@ impl<'a> Routine for Summarization<'a> {
         for summary in out {
             output
                 .artifacts
-                .push(types::CortexSummaryArtifact { text: summary }.into());
+                .push(if let Some(model) = self.embed_model {
+                    let vector = model.encode(&[&summary]).map_err(CortexError::from)?;
+                    types::CortexTextArtifact {
+                        name: "summary".to_string(),
+                        text: summary,
+                        vector: vector.first().cloned(),
+                    }
+                    .into()
+                } else {
+                    types::CortexTextArtifact {
+                        name: "summary".to_string(),
+                        text: summary,
+                        vector: None,
+                    }
+                    .into()
+                });
         }
 
         Ok(output)

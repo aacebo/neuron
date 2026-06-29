@@ -34,14 +34,14 @@ impl<'a> ArtifactStorage<'a> {
         sqlx::query_as::<_, MessageArtifact>(
             r#"
             INSERT INTO message_artifacts
-                (id, message_id, type, content, embedding, created_at)
+                (id, message_id, name, content, embedding, created_at)
             VALUES ($1, $2, $3, $4, $5, NOW())
             RETURNING *
             "#,
         )
         .bind(artifact.id)
         .bind(artifact.message_id)
-        .bind(&artifact.r#type)
+        .bind(&artifact.name)
         .bind(&artifact.content)
         .bind(&artifact.embedding)
         .fetch_one(self.pool)
@@ -52,13 +52,13 @@ impl<'a> ArtifactStorage<'a> {
         sqlx::query_as::<_, MessageArtifact>(
             r#"
             UPDATE message_artifacts
-            SET type = $2, content = $3, embedding = $4
+            SET name = $2, content = $3, embedding = $4
             WHERE id = $1
             RETURNING *
             "#,
         )
         .bind(artifact.id)
-        .bind(&artifact.r#type)
+        .bind(&artifact.name)
         .bind(&artifact.content)
         .bind(&artifact.embedding)
         .fetch_one(self.pool)

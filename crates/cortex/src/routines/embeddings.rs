@@ -21,10 +21,15 @@ impl<'a> Routine for Embeddings<'a> {
         let out = self.model.encode(input.text).map_err(CortexError::from)?;
         let mut output = CortexOutput::default();
 
-        for vector in out {
-            output
-                .artifacts
-                .push(types::CortexEmbeddingArtifact { vector }.into());
+        for (vector, text) in out.into_iter().zip(input.text) {
+            output.artifacts.push(
+                types::CortexTextArtifact {
+                    name: "embedding".to_string(),
+                    text: text.to_string(),
+                    vector: Some(vector),
+                }
+                .into(),
+            );
         }
 
         Ok(output)

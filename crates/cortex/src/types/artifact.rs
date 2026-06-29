@@ -1,28 +1,18 @@
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum CortexArtifact {
-    Summary(CortexSummaryArtifact),
-    Embedding(CortexEmbeddingArtifact),
+    Text(CortexTextArtifact),
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct CortexSummaryArtifact {
+pub struct CortexTextArtifact {
+    pub name: String,
     pub text: String,
+    pub vector: Option<Vec<f32>>,
 }
 
-impl From<CortexSummaryArtifact> for CortexArtifact {
-    fn from(value: CortexSummaryArtifact) -> Self {
-        Self::Summary(value)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct CortexEmbeddingArtifact {
-    pub vector: Vec<f32>,
-}
-
-impl From<CortexEmbeddingArtifact> for CortexArtifact {
-    fn from(value: CortexEmbeddingArtifact) -> Self {
-        Self::Embedding(value)
+impl From<CortexTextArtifact> for CortexArtifact {
+    fn from(value: CortexTextArtifact) -> Self {
+        Self::Text(value)
     }
 }

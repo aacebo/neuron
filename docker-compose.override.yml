@@ -18,10 +18,13 @@ services:
     build:
       target: builder
     working_dir: /app
+    environment:
+      RUSTBERT_CACHE: /app/.rustbert-cache
     volumes:
       - .:/app
       - executor-target:/app/target
       - executor-cargo-registry:/usr/local/cargo/registry
+      - ./.rustbert-cache:/app/.rustbert-cache
     command: cargo run --package executor
     depends_on:
       postgres:

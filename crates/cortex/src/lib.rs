@@ -145,7 +145,7 @@ impl Cortex {
             summarization: self
                 .summarization
                 .as_ref()
-                .map(|m| routines::Summarization::new(m)),
+                .map(|m| routines::Summarization::new(m, self.sentence_embeddings.as_ref())),
         }
     }
 }
