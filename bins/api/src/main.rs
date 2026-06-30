@@ -40,6 +40,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(RequestContextMiddleware)
             .service(routes::index::get)
             .service(routes::console::get)
+            .service(routes::console::get_run)
             .service(routes::chats::messages::create)
             .service(routes::messages::get::get)
             .service(routes::messages::events::events)

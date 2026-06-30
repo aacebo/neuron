@@ -14,7 +14,7 @@
 }
 </style>
 
-<div class="max-w-4xl mx-auto px-6 py-10" x-data="neuronConsole()">
+<div class="max-w-4xl mx-auto px-6 py-10" x-data='neuronConsole({{ initial_message_id_json|safe }})'>
 
     <div class="mb-8">
         <h1 class="text-2xl font-bold text-white tracking-tight">Neuron Console</h1>
@@ -38,6 +38,12 @@
             >
                 Analyze
             </button>
+            <span
+                x-show="showElapsed"
+                class="text-xs text-gray-500 font-mono"
+            >
+                elapsed: <span x-text="formatElapsed(result.job_elapsed_ms)"></span>
+            </span>
         </div>
     </form>
 
@@ -142,6 +148,7 @@
         <!-- Metadata footer -->
         <div class="border-t border-gray-800 pt-4 flex flex-wrap gap-6 text-xs text-gray-600 font-mono">
             <span>id: <span x-text="result ? result.id : ''"></span></span>
+            <span x-show="result && result.job_status">status: <span x-text="result ? result.job_status : ''"></span></span>
             <span>source: <span x-text="result ? result.source : ''"></span></span>
             <span>created: <span x-text="result ? result.created_at : ''"></span></span>
         </div>
@@ -152,13 +159,22 @@
 
 <script>
 document.addEventListener('alpine:init', () => {
-    Alpine.data('neuronConsole', () => ({
+    Alpine.data('neuronConsole', (initialMessageId = null) => ({
+        initialMessageId,
         text: '',
         loading: false,
         result: null,
         error: null,
+        eventSource: null,
+
+        init() {
+            if (this.initialMessageId) {
+                this.loadRun(this.initialMessageId);
+            }
+        },
 
         async submit() {
+            this.closeEvents();
             this.loading = true;
             this.result = null;
             this.error = null;
@@ -171,22 +187,112 @@ document.addEventListener('alpine:init', () => {
                 if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
                 const message = await res.json();
 
-                await new Promise((resolve, reject) => {
-                    const es = new EventSource(`/messages/${message.id}/events`);
-                    es.onmessage = (e) => {
-                        try { this.result = JSON.parse(e.data); } catch {}
-                    };
-                    es.addEventListener('done', () => {
-                        es.close();
-                        resolve();
-                    });
-                    es.onerror = () => { es.close(); reject(new Error('Connection lost')); };
-                });
+                window.location.assign(`/console/${message.id}`);
             } catch (e) {
                 this.error = e.message;
-            } finally {
                 this.loading = false;
             }
+        },
+
+        async loadRun(messageId) {
+            this.closeEvents();
+            this.loading = true;
+            this.error = null;
+
+            try {
+                const result = await this.fetchRun(messageId);
+                this.applyResult(result);
+
+                if (this.shouldWatch(result)) {
+                    this.watchRun(messageId);
+                } else {
+                    this.loading = false;
+                }
+            } catch (e) {
+                this.error = e.message;
+                this.loading = false;
+            }
+        },
+
+        async fetchRun(messageId) {
+            const res = await fetch(`/messages/${messageId}`);
+            if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+            return await res.json();
+        },
+
+        watchRun(messageId) {
+            this.closeEvents();
+            this.loading = true;
+
+            const es = new EventSource(`/messages/${messageId}/events`);
+            this.eventSource = es;
+
+            es.onmessage = (e) => {
+                try {
+                    this.applyResult(JSON.parse(e.data));
+                } catch {}
+            };
+
+            es.addEventListener('done', () => {
+                this.closeEvents();
+                this.loading = false;
+            });
+
+            es.onerror = () => {
+                this.closeEvents();
+                if (this.shouldWatch(this.result)) {
+                    this.error = 'Connection lost';
+                }
+                this.loading = false;
+            };
+        },
+
+        closeEvents() {
+            if (this.eventSource) {
+                this.eventSource.close();
+                this.eventSource = null;
+            }
+        },
+
+        applyResult(result) {
+            this.result = result;
+            this.text = result.text ?? '';
+
+            if (result.job_status === 'failure') {
+                this.error = this.formatJobFailure(result.job_error);
+            } else if (result.job_status === 'cancelled') {
+                this.error = 'Pipeline cancelled';
+            } else {
+                this.error = null;
+            }
+
+            if (this.isTerminalStatus(result.job_status)) {
+                this.loading = false;
+            }
+        },
+
+        shouldWatch(result) {
+            return !this.isTerminalStatus(result?.job_status);
+        },
+
+        isTerminalStatus(status) {
+            return ['success', 'failure', 'cancelled'].includes(status);
+        },
+
+        formatJobFailure(error) {
+            if (!error) return 'Pipeline failed';
+            if (typeof error === 'string') return `Pipeline failed: ${error}`;
+            return `Pipeline failed: ${JSON.stringify(error)}`;
+        },
+
+        formatElapsed(ms) {
+            return `${(ms / 1000).toFixed(2)}s`;
+        },
+
+        get showElapsed() {
+            return this.result
+                && this.isTerminalStatus(this.result.job_status)
+                && Number.isFinite(this.result.job_elapsed_ms);
         },
 
         get segments() {

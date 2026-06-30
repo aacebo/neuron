@@ -23,7 +23,7 @@ impl<'a> AnnotationStorage<'a> {
         message_id: uuid::Uuid,
     ) -> Result<Vec<MessageAnnotation>, sqlx::Error> {
         sqlx::query_as::<_, MessageAnnotation>(
-            "SELECT * FROM message_annotations WHERE message_id = $1 ORDER BY created_at",
+            "SELECT * FROM message_annotations WHERE message_id = $1 ORDER BY score DESC, created_at ASC, id ASC",
         )
         .bind(message_id)
         .fetch_all(self.pool)

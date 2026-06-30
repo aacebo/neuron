@@ -24,11 +24,12 @@ pub async fn events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> HttpRes
                 let storage = storage::Storage::new(&pool);
 
                 let jobs = match storage.jobs().get_by_message(id).await {
-                    Ok(j) => j,
+                    Ok(jobs) => jobs,
                     Err(_) => continue,
                 };
 
-                let current_status = jobs.first().map(|j| j.status);
+                let latest_job = jobs.first();
+                let current_status = latest_job.map(|job| job.status);
 
                 // only emit when status changes
                 if current_status == last_status {
@@ -36,17 +37,29 @@ pub async fn events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> HttpRes
                 }
 
                 let message = match storage.messages().get(id).await {
-                    Ok(Some(m)) => m,
+                    Ok(Some(message)) => message,
                     _ => continue,
                 };
                 let annotations = match storage.annotations().get_by_message(id).await {
-                    Ok(a) => a,
+                    Ok(annotations) => annotations,
                     Err(_) => continue,
                 };
                 let artifacts = match storage.artifacts().get_by_message(id).await {
-                    Ok(a) => a,
+                    Ok(artifacts) => artifacts,
                     Err(_) => continue,
                 };
+                let job_elapsed_ms = latest_job.and_then(|job| {
+                    let started_at = job.started_at.as_ref()?;
+                    let ended_at = job.ended_at.as_ref()?;
+
+                    Some(
+                        ended_at
+                            .clone()
+                            .signed_duration_since(started_at.clone())
+                            .num_milliseconds()
+                            .max(0),
+                    )
+                });
 
                 let payload = serde_json::json!({
                     "id": message.id,
@@ -56,6 +69,11 @@ pub async fn events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> HttpRes
                     "updated_at": message.updated_at,
                     "annotations": annotations,
                     "artifacts": artifacts,
+                    "job_status": latest_job.map(|job| job.status),
+                    "job_error": latest_job.and_then(|job| job.error.clone()),
+                    "job_started_at": latest_job.and_then(|job| job.started_at),
+                    "job_ended_at": latest_job.and_then(|job| job.ended_at),
+                    "job_elapsed_ms": job_elapsed_ms,
                 });
 
                 let is_terminal = matches!(
