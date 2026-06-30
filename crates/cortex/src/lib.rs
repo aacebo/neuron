@@ -120,7 +120,8 @@ impl CortexConfig {
         }
 
         if let Some(config) = self.pii_extraction {
-            cortex.pii_extraction = Some(ner::NERModel::new(config)?);
+            cortex.pii_extraction =
+                Some(token_classification::TokenClassificationModel::new(config)?);
         }
 
         if let Some(config) = self.sentiment {
@@ -140,7 +141,7 @@ pub struct Cortex {
     sentence_embeddings: Option<sentence_embeddings::SentenceEmbeddingsModel>,
     entity_extraction: Option<ner::NERModel>,
     keyword_extraction: Option<keywords_extraction::KeywordExtractionModel<'static>>,
-    pii_extraction: Option<ner::NERModel>,
+    pii_extraction: Option<token_classification::TokenClassificationModel>,
     sentiment: Option<sentiment::SentimentModel>,
     summarization: Option<summarization::SummarizationModel>,
 }
