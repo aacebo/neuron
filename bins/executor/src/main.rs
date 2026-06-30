@@ -68,9 +68,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 LabelAggregationOption::Mode,
             ))
             .with_sentiment(rust_bert::pipelines::sentiment::SentimentConfig::default())
-            .with_summarization(
-                rust_bert::pipelines::summarization::SummarizationConfig::default(),
-            )
+            .with_summarization({
+                let mut config =
+                    rust_bert::pipelines::summarization::SummarizationConfig::default();
+                config.min_length = 8;
+                config.max_length = Some(64);
+                config
+            })
             .build()
     })
     .await?

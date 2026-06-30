@@ -23,30 +23,36 @@ impl<'a> Routine for Summarization<'a> {
 
     fn invoke(&self, input: CortexInput<'_>) -> Result<CortexOutput, CortexError> {
         let mut output = CortexOutput::default();
-        let out = self
-            .model
-            .summarize(input.text)
-            .map_err(CortexError::from)?;
+        let text = input
+            .text
+            .iter()
+            .copied()
+            .filter(|text| text.split_whitespace().count() >= 8)
+            .collect::<Vec<_>>();
+
+        if text.is_empty() {
+            return Ok(output);
+        }
+
+        let out = self.model.summarize(&text).map_err(CortexError::from)?;
 
         for summary in out {
-            output
-                .artifacts
-                .push(if let Some(model) = self.embed_model {
-                    let vector = model.encode(&[&summary]).map_err(CortexError::from)?;
-                    types::CortexTextArtifact {
-                        name: "summary".to_string(),
-                        text: summary,
-                        vector: vector.first().cloned(),
-                    }
-                    .into()
-                } else {
-                    types::CortexTextArtifact {
-                        name: "summary".to_string(),
-                        text: summary,
-                        vector: None,
-                    }
-                    .into()
-                });
+            let artifact = if let Some(model) = self.embed_model {
+                let vector = model.encode(&[&summary]).map_err(CortexError::from)?;
+                types::CortexTextArtifact {
+                    name: "summary".to_string(),
+                    text: summary,
+                    vector: vector.first().cloned(),
+                }
+            } else {
+                types::CortexTextArtifact {
+                    name: "summary".to_string(),
+                    text: summary,
+                    vector: None,
+                }
+            };
+
+            output.artifacts.push(artifact.into());
         }
 
         Ok(output)
