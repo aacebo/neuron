@@ -22,7 +22,10 @@ impl<'a> Routine for EntityExtraction<'a> {
         let mut output = CortexOutput::default();
 
         for entities in out {
-            for entity in entities {
+            for entity in entities
+                .into_iter()
+                .filter(|e| e.score as f32 >= input.min_score)
+            {
                 output.annotations.push(types::CortexAnnotation {
                     r#type: String::from("entity"),
                     label: match entity.label.as_str() {

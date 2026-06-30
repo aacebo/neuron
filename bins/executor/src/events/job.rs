@@ -29,9 +29,8 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn st
     let pipeline = ctx.cortex().pipeline();
     let output = tokio::task::block_in_place(|| {
         let mut out = cortex::CortexOutput::default();
-        let input = CortexInput {
-            text: &[text.as_str()],
-        };
+        let binding = [text.as_str()];
+        let input = CortexInput::new(&binding).with_min_score(0.4);
 
         for routine in pipeline.routines() {
             let result = routine.invoke(input)?;

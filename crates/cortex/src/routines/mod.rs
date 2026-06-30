@@ -12,6 +12,8 @@ pub use pii_extraction::*;
 pub use sentiment::*;
 pub use summarization::*;
 
+use crate::{CortexOutput, Routine};
+
 pub struct Pipeline<'a> {
     pub embeddings: Option<Embeddings<'a>>,
     pub entity_extraction: Option<EntityExtraction<'a>>,
@@ -50,5 +52,24 @@ impl<'a> Pipeline<'a> {
         }
 
         v
+    }
+}
+
+impl<'a> Routine for Pipeline<'a> {
+    fn name(&self) -> &'static str {
+        "pipeline"
+    }
+
+    fn invoke(
+        &self,
+        input: crate::CortexInput<'_>,
+    ) -> Result<crate::CortexOutput, crate::CortexError> {
+        let mut output = CortexOutput::default();
+
+        for routine in self.routines() {
+            output = output.merge(routine.invoke(input)?);
+        }
+
+        Ok(output)
     }
 }

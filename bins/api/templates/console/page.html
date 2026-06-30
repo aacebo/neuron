@@ -316,9 +316,10 @@ document.addEventListener('alpine:init', () => {
         get segments() {
             if (!this.result) return [];
             const text = this.result.text;
+            const chars = Array.from(text);
             const anns = this.result.annotations ?? [];
             const priority = { pii: 0, entity: 1, keyword: 2 };
-            const charAnn = new Array(text.length).fill(null);
+            const charAnn = new Array(chars.length).fill(null);
 
             const sorted = [...anns]
                 .filter(a => a.type !== 'sentiment' && a.type in priority)
@@ -326,7 +327,9 @@ document.addEventListener('alpine:init', () => {
 
             for (const ann of sorted) {
                 for (const span of ann.spans ?? []) {
-                    for (let i = span.start; i < span.end && i < text.length; i++) {
+                    const start = Math.max(0, Number(span.start) || 0);
+                    const end = Math.min(chars.length, Math.max(start, Number(span.end) || start));
+                    for (let i = start; i < end; i++) {
                         charAnn[i] = ann;
                     }
                 }
@@ -334,12 +337,12 @@ document.addEventListener('alpine:init', () => {
 
             const segs = [];
             let i = 0;
-            while (i < text.length) {
+            while (i < chars.length) {
                 const cur = charAnn[i];
                 let j = i + 1;
-                while (j < text.length && charAnn[j] === cur) j++;
+                while (j < chars.length && charAnn[j] === cur) j++;
                 segs.push({
-                    text: text.slice(i, j),
+                    text: chars.slice(i, j).join(''),
                     type: cur?.type ?? '',
                     label: cur?.label ?? '',
                     score: cur ? cur.score.toFixed(2) : '',

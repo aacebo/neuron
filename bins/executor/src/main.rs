@@ -1,3 +1,8 @@
+use rust_bert::pipelines::common::{ModelResource, ModelType, ONNXModelResources};
+use rust_bert::pipelines::token_classification::{
+    LabelAggregationOption, TokenClassificationConfig,
+};
+use rust_bert::resources::RemoteResource;
 use sqlx::postgres::PgPoolOptions;
 
 mod config;
@@ -30,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         cortex::CortexConfig::new()
             .with_sentence_embeddings(
                 rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsConfig::from(
-                    rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModelType::AllMiniLmL6V2,
+                    rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModelType::AllMiniLmL12V2,
                 ),
             )
             .with_entity_extraction(
@@ -39,9 +44,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_keyword_extraction(
                 rust_bert::pipelines::keywords_extraction::KeywordExtractionConfig::default(),
             )
-            .with_pii_extraction(
-                rust_bert::pipelines::token_classification::TokenClassificationConfig::default(),
-            )
+            .with_pii_extraction(TokenClassificationConfig::new(
+                ModelType::Bert,
+                ModelResource::ONNX(ONNXModelResources {
+                    encoder_resource: Some(Box::new(RemoteResource::new(
+                        "https://huggingface.co/rtrigoso/bert-small-pii-detection-ONNX/resolve/main/onnx/model.onnx",
+                        "bert-small-pii-detection",
+                    ))),
+                    ..Default::default()
+                }),
+                RemoteResource::new(
+                    "https://huggingface.co/rtrigoso/bert-small-pii-detection-ONNX/resolve/main/config.json",
+                    "bert-small-pii-detection",
+                ),
+                RemoteResource::new(
+                    "https://huggingface.co/rtrigoso/bert-small-pii-detection-ONNX/resolve/main/vocab.txt",
+                    "bert-small-pii-detection",
+                ),
+                None::<RemoteResource>,
+                false,
+                None,
+                None,
+                LabelAggregationOption::Mode,
+            ))
             .with_sentiment(rust_bert::pipelines::sentiment::SentimentConfig::default())
             .with_summarization(
                 rust_bert::pipelines::summarization::SummarizationConfig::default(),

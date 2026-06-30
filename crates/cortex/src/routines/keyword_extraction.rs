@@ -22,7 +22,7 @@ impl<'a> Routine for KeywordExtraction<'a> {
         let mut output = CortexOutput::default();
 
         for keywords in out {
-            for keyword in keywords {
+            for keyword in keywords.into_iter().filter(|v| v.score >= input.min_score) {
                 output.annotations.push(types::CortexAnnotation {
                     r#type: String::from("keyword"),
                     label: keyword.text.clone(),

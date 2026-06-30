@@ -14,12 +14,35 @@ pub trait Routine {
 #[derive(Debug, Copy, Clone)]
 pub struct CortexInput<'a> {
     pub text: &'a [&'a str],
+    pub min_score: f32,
+}
+
+impl<'a> CortexInput<'a> {
+    pub fn new(text: &'a [&'a str]) -> Self {
+        Self {
+            text,
+            min_score: 0.5,
+        }
+    }
+
+    pub fn with_min_score(mut self, value: f32) -> Self {
+        self.min_score = value;
+        self
+    }
 }
 
 #[derive(Debug, Default, Clone, serde::Serialize)]
 pub struct CortexOutput {
     pub annotations: Vec<types::CortexAnnotation>,
     pub artifacts: Vec<types::CortexArtifact>,
+}
+
+impl CortexOutput {
+    pub fn merge(mut self, other: Self) -> Self {
+        self.annotations.extend(other.annotations);
+        self.artifacts.extend(other.artifacts);
+        self
+    }
 }
 
 #[derive(Default)]
