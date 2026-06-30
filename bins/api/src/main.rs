@@ -5,6 +5,7 @@ mod config;
 mod context;
 mod request_context;
 mod routes;
+mod views;
 
 pub use config::Config;
 pub use context::Context;

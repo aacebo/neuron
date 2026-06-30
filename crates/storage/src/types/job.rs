@@ -80,9 +80,9 @@ pub enum JobStatus {
     #[default]
     Queued,
     Running,
-    Success,
     Failure,
     Cancelled,
+    Success,
 }
 
 impl std::fmt::Display for JobStatus {

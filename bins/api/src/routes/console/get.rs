@@ -1,19 +1,18 @@
 use actix_web::{get, web};
 use askama::Template;
 
+use crate::RequestContext;
+use crate::views::MessageView;
+
 #[derive(Template)]
 #[template(path = "console/page.html")]
 struct ConsolePage {
-    initial_message_id_json: String,
+    message: Option<MessageView>,
 }
 
 impl ConsolePage {
-    fn new(initial_message_id: Option<uuid::Uuid>) -> Self {
-        Self {
-            initial_message_id_json: initial_message_id
-                .map(|id| format!("\"{id}\""))
-                .unwrap_or_else(|| "null".to_string()),
-        }
+    fn new(message: Option<MessageView>) -> Self {
+        Self { message }
     }
 }
 
@@ -27,9 +26,18 @@ pub async fn get() -> Result<web::Html, actix_web::Error> {
 }
 
 #[get("/console/{message_id}")]
-pub async fn get_run(path: web::Path<uuid::Uuid>) -> Result<web::Html, actix_web::Error> {
+pub async fn get_run(
+    ctx: RequestContext,
+    path: web::Path<uuid::Uuid>,
+) -> Result<web::Html, actix_web::Error> {
+    let message_id = path.into_inner();
+    let message = MessageView::get(&ctx.storage(), message_id)
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .ok_or_else(|| actix_web::error::ErrorNotFound("message not found"))?;
+
     Ok(web::Html::new(
-        ConsolePage::new(Some(path.into_inner()))
+        ConsolePage::new(Some(message))
             .render()
             .map_err(actix_web::error::ErrorInternalServerError)?,
     ))

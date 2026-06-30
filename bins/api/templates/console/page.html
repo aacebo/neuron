@@ -14,7 +14,9 @@
 }
 </style>
 
-<div class="max-w-4xl mx-auto px-6 py-10" x-data='neuronConsole({{ initial_message_id_json|safe }})'>
+<script id="console-message" type="application/json">{{ message|json|safe }}</script>
+
+<div class="max-w-4xl mx-auto px-6 py-10" x-data="neuronConsole()">
 
     <div class="mb-8">
         <h1 class="text-2xl font-bold text-white tracking-tight">Neuron Console</h1>
@@ -42,7 +44,7 @@
                 x-show="showElapsed"
                 class="text-xs text-gray-500 font-mono"
             >
-                elapsed: <span x-text="formatElapsed(result.job_elapsed_ms)"></span>
+                elapsed: <span x-text="formatElapsed(elapsedMs)"></span>
             </span>
         </div>
     </form>
@@ -148,7 +150,7 @@
         <!-- Metadata footer -->
         <div class="border-t border-gray-800 pt-4 flex flex-wrap gap-6 text-xs text-gray-600 font-mono">
             <span>id: <span x-text="result ? result.id : ''"></span></span>
-            <span x-show="result && result.job_status">status: <span x-text="result ? result.job_status : ''"></span></span>
+            <span x-show="jobStatus(result)">status: <span x-text="jobStatus(result)"></span></span>
             <span>source: <span x-text="result ? result.source : ''"></span></span>
             <span>created: <span x-text="result ? result.created_at : ''"></span></span>
         </div>
@@ -159,8 +161,7 @@
 
 <script>
 document.addEventListener('alpine:init', () => {
-    Alpine.data('neuronConsole', (initialMessageId = null) => ({
-        initialMessageId,
+    Alpine.data('neuronConsole', () => ({
         text: '',
         loading: false,
         result: null,
@@ -168,8 +169,13 @@ document.addEventListener('alpine:init', () => {
         eventSource: null,
 
         init() {
-            if (this.initialMessageId) {
-                this.loadRun(this.initialMessageId);
+            const message = this.pageMessage();
+            if (message) {
+                this.applyResult(message);
+
+                if (this.shouldWatch(message)) {
+                    this.watchRun(message.id);
+                }
             }
         },
 
@@ -194,30 +200,15 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async loadRun(messageId) {
-            this.closeEvents();
-            this.loading = true;
-            this.error = null;
+        pageMessage() {
+            const el = document.getElementById('console-message');
+            if (!el) return null;
 
             try {
-                const result = await this.fetchRun(messageId);
-                this.applyResult(result);
-
-                if (this.shouldWatch(result)) {
-                    this.watchRun(messageId);
-                } else {
-                    this.loading = false;
-                }
-            } catch (e) {
-                this.error = e.message;
-                this.loading = false;
+                return JSON.parse(el.textContent);
+            } catch {
+                return null;
             }
-        },
-
-        async fetchRun(messageId) {
-            const res = await fetch(`/messages/${messageId}`);
-            if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-            return await res.json();
         },
 
         watchRun(messageId) {
@@ -258,25 +249,48 @@ document.addEventListener('alpine:init', () => {
             this.result = result;
             this.text = result.text ?? '';
 
-            if (result.job_status === 'failure') {
-                this.error = this.formatJobFailure(result.job_error);
-            } else if (result.job_status === 'cancelled') {
+            const status = this.jobStatus(result);
+
+            if (status === 'failure') {
+                this.error = this.formatJobFailure(this.latestJob(result)?.error);
+            } else if (status === 'cancelled') {
                 this.error = 'Pipeline cancelled';
             } else {
                 this.error = null;
             }
 
-            if (this.isTerminalStatus(result.job_status)) {
-                this.loading = false;
-            }
+            this.loading = this.shouldWatch(result);
         },
 
         shouldWatch(result) {
-            return !this.isTerminalStatus(result?.job_status);
+            if (!result) return false;
+
+            const jobs = result.jobs ?? [];
+            return jobs.length === 0 || this.hasIncompleteJobs(result);
         },
 
         isTerminalStatus(status) {
             return ['success', 'failure', 'cancelled'].includes(status);
+        },
+
+        hasIncompleteJobs(result = this.result) {
+            return (result?.jobs ?? []).some(job => !this.isTerminalStatus(job.status));
+        },
+
+        latestJob(result = this.result) {
+            return result?.jobs?.[0] ?? null;
+        },
+
+        jobStatus(result = this.result) {
+            return this.latestJob(result)?.status ?? null;
+        },
+
+        elapsedMsFor(result = this.result) {
+            const job = this.latestJob(result);
+            if (!job?.started_at || !job?.ended_at) return null;
+
+            const ms = Date.parse(job.ended_at) - Date.parse(job.started_at);
+            return Number.isFinite(ms) ? Math.max(0, ms) : null;
         },
 
         formatJobFailure(error) {
@@ -289,10 +303,14 @@ document.addEventListener('alpine:init', () => {
             return `${(ms / 1000).toFixed(2)}s`;
         },
 
+        get elapsedMs() {
+            return this.elapsedMsFor(this.result);
+        },
+
         get showElapsed() {
             return this.result
-                && this.isTerminalStatus(this.result.job_status)
-                && Number.isFinite(this.result.job_elapsed_ms);
+                && this.isTerminalStatus(this.jobStatus(this.result))
+                && Number.isFinite(this.elapsedMs);
         },
 
         get segments() {
