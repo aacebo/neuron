@@ -1,7 +1,11 @@
+pub mod actions;
 mod error;
 pub mod routines;
 pub mod types;
+pub mod predicates;
 
+pub use actions::Action;
+pub use predicates::Predicate;
 pub use error::*;
 
 use rust_bert::pipelines::*;
@@ -9,6 +13,36 @@ use rust_bert::pipelines::*;
 pub trait Routine {
     fn name(&self) -> &'static str;
     fn invoke(&self, input: CortexInput<'_>) -> Result<CortexOutput, CortexError>;
+}
+
+pub struct Options {
+    pub min_score: f32,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self { min_score: 0.4 }
+    }
+}
+
+pub struct Context<'a> {
+    pub meta: reflect::MetaData,
+    pub input: &'a [&'a str],
+    pub options: Options,
+    pub annotations: Vec<types::CortexAnnotation>,
+    pub artifacts: Vec<types::CortexArtifact>,
+}
+
+impl<'a> Context<'a> {
+    pub fn new(input: &'a [&'a str]) -> Self {
+        Self {
+            meta: reflect::MetaData::new(),
+            input,
+            options: Default::default(),
+            annotations: Default::default(),
+            artifacts: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
