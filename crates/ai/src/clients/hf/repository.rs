@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 
 use hf_hub::api::sync::{ApiBuilder, ApiRepo};
 
-use crate::resources::{Asset, AssetData, ModelId, Repository, cache};
+use crate::models::ModelId;
+use crate::resources::{Asset, AssetData, Repository, cache};
 use crate::{Error, Result};
 
 pub struct HuggingFace {

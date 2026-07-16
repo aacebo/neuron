@@ -4,7 +4,11 @@ pub mod distilbert;
 
 mod capability;
 mod loaded;
+mod loader;
+mod model_id;
+mod provider;
 mod remote;
+mod tokenizer;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -12,12 +16,15 @@ use std::sync::Arc;
 use candle_core::{DType, Device};
 pub use capability::{Classify, Context, Embed, GenOpts, Generate, Label, TokenClassify, Word};
 pub use loaded::Loaded;
+pub use loader::Loader;
+pub use model_id::ModelId;
+pub use provider::Provider;
 
 use crate::clients::fs::FileSystem;
 use crate::clients::hf::HuggingFace;
 use crate::clients::http::Http;
 use crate::clients::openai::OpenAI;
-use crate::resources::{Loader, ModelId, Provider, Repository, Resource, Uri};
+use crate::resources::{Repository, Resource, Uri};
 use crate::{Error, Result};
 
 pub trait Forward: Send + Sync {

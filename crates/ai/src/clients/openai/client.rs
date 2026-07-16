@@ -3,7 +3,7 @@ use std::time::Duration;
 use reqwest::blocking::Client;
 
 use super::types::{ChatResponse, EmbeddingsResponse, Message};
-use crate::resources::{ModelId, Provider};
+use crate::models::{ModelId, Provider};
 use crate::{Error, Result};
 
 /// An OpenAI-compatible client. The same schema is spoken by Azure OpenAI, Ollama, vLLM,
