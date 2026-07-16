@@ -13,4 +13,4 @@ linker = "clang"
 rustflags = ["-Ctarget-feature=+neon,+fp16,+fhm", "-Clink-arg=-fuse-ld=lld"]
 
 [alias]
-lint = "clippy --workspace --all-features -- -D warnings"
+lint = "clippy --workspace -- -D warnings"

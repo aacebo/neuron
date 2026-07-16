@@ -11,6 +11,10 @@ doctest = false
 [lints]
 workspace = true
 
+[features]
+accelerate = ["candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate"]
+mkl = ["candle-core/mkl", "candle-nn/mkl", "candle-transformers/mkl"]
+
 [dependencies]
 serde = { version = "1", features = ["derive", "rc"] }
 serde_json = { version = "1" }
@@ -21,3 +25,13 @@ tokenizers = { version = "0.22" }
 hf-hub = { version = "0.5" }
 reqwest = { version = "0.13", features = ["json", "blocking"] }
 url = { version = "2" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+candle-core = { version = "0.11", features = ["accelerate"] }
+candle-nn = { version = "0.11", features = ["accelerate"] }
+candle-transformers = { version = "0.11", features = ["accelerate"] }
+
+[target.'cfg(all(target_arch = "x86_64", target_os = "linux"))'.dependencies]
+candle-core = { version = "0.11", features = ["mkl"] }
+candle-nn = { version = "0.11", features = ["mkl"] }
+candle-transformers = { version = "0.11", features = ["mkl"] }

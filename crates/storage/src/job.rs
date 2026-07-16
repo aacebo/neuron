@@ -53,14 +53,14 @@ impl<'a> JobStorage<'a> {
             RETURNING *
             "#,
         )
-        .bind(&job.id)
+        .bind(job.id)
         .bind(&job.name)
-        .bind(&job.status)
+        .bind(job.status)
         .bind(&job.error)
-        .bind(&job.attempts)
-        .bind(&job.max_attempts)
-        .bind(&job.started_at)
-        .bind(&job.ended_at)
+        .bind(job.attempts)
+        .bind(job.max_attempts)
+        .bind(job.started_at)
+        .bind(job.ended_at)
         .fetch_one(self.pool)
         .await?;
 
@@ -76,8 +76,8 @@ impl<'a> JobStorage<'a> {
                 VALUES ($1, $2, NOW())
                 "#,
             )
-            .bind(&message_id)
-            .bind(&job.id)
+            .bind(message_id)
+            .bind(job.id)
             .execute(self.pool)
             .await?;
         }
@@ -99,12 +99,12 @@ impl<'a> JobStorage<'a> {
             RETURNING *
             "#,
         )
-        .bind(&job.id)
-        .bind(&job.status)
+        .bind(job.id)
+        .bind(job.status)
         .bind(&job.error)
-        .bind(&job.attempts)
-        .bind(&job.started_at)
-        .bind(&job.ended_at)
+        .bind(job.attempts)
+        .bind(job.started_at)
+        .bind(job.ended_at)
         .fetch_one(self.pool)
         .await
     }

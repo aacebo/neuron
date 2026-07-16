@@ -6,7 +6,7 @@ pub mod generate;
 pub use cache::{Cache, Key};
 pub use common::Batch;
 
-use crate::models::{Model, ModelId, ModelRef, Provider};
+use crate::models::{GenOpts, Model, ModelId, ModelRef, Provider};
 use crate::types::{Annotation, Artifact, ArtifactContent, Entity, Offset};
 use crate::{Error, Result, tasks};
 
@@ -14,12 +14,21 @@ static MODELS: std::sync::LazyLock<Cache<crate::models::Model>> = std::sync::Laz
 const TOP_N: usize = 5;
 
 type TokenArgs = (Vec<String>, f64, std::sync::Arc<Model>);
-type RoutineResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TextArgs {
     pub text: Vec<String>,
     pub model: ModelArgs,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SummarizeArgs {
+    pub text: Vec<String>,
+    pub model: ModelArgs,
+    #[serde(default)]
+    pub beams: Option<usize>,
+    #[serde(default)]
+    pub max_len: Option<usize>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -38,13 +47,13 @@ pub struct ModelArgs {
 }
 
 impl ModelArgs {
-    pub fn resolve(self, default: ModelRef) -> RoutineResult<ModelRef> {
+    pub fn resolve(self, default: ModelRef) -> Result<ModelRef> {
         let Some(provider) = self.provider else {
             let Some(model) = self.model else {
                 return Ok(default);
             };
 
-            return Ok(model.parse()?);
+            return model.parse();
         };
 
         let provider: Provider = provider.parse()?;
@@ -76,11 +85,11 @@ pub fn load(model: &ModelRef, api_key: &Option<String>) -> Result<std::sync::Arc
     })
 }
 
-/// Each routine is the same four steps: parse args, load the model, ask it for the capability the
-/// routine needs, and present the result. Asking is where the capability matrix bites -- a model
-/// that cannot do the job fails here, by name, instead of part-way through inference.
+// Each routine is the same four steps: parse args, load the model, ask it for the capability the
+// routine needs, and present the result. Asking is where the capability matrix bites -- a model
+// that cannot do the job fails here, by name, instead of part-way through inference.
 
-pub fn embeddings(args: TextArgs) -> RoutineResult<Vec<Artifact>> {
+pub fn embeddings(args: TextArgs) -> Result<Vec<Artifact>> {
     let api_key = args.model.api_key.clone();
     let model = load(&args.model.resolve(defaults::embed())?, &api_key)?;
     let capable = model.as_embed().ok_or_else(|| model.cannot("embed"))?;
@@ -98,7 +107,7 @@ pub fn embeddings(args: TextArgs) -> RoutineResult<Vec<Artifact>> {
     Ok(artifacts)
 }
 
-pub fn keywords(args: ScoredArgs) -> RoutineResult<Vec<Annotation>> {
+pub fn keywords(args: ScoredArgs) -> Result<Vec<Annotation>> {
     let api_key = args.model.api_key.clone();
     let model = load(&args.model.resolve(defaults::keywords())?, &api_key)?;
     let capable = model.as_embed().ok_or_else(|| model.cannot("embed"))?;
@@ -121,7 +130,7 @@ pub fn keywords(args: ScoredArgs) -> RoutineResult<Vec<Annotation>> {
     Ok(annotations)
 }
 
-pub fn sentiment(args: ScoredArgs) -> RoutineResult<Vec<Annotation>> {
+pub fn sentiment(args: ScoredArgs) -> Result<Vec<Annotation>> {
     let api_key = args.model.api_key.clone();
     let model = load(&args.model.resolve(defaults::classify())?, &api_key)?;
     let capable = model.as_classify().ok_or_else(|| model.cannot("classify"))?;
@@ -148,7 +157,7 @@ pub fn sentiment(args: ScoredArgs) -> RoutineResult<Vec<Annotation>> {
     Ok(annotations)
 }
 
-pub fn entities(args: ScoredArgs) -> RoutineResult<Vec<Annotation>> {
+pub fn entities(args: ScoredArgs) -> Result<Vec<Annotation>> {
     let (text, min_score, model) = token_args(args)?;
     let capable = model.as_token_classify().ok_or_else(|| model.cannot("token-classify"))?;
     let out = tasks::entities(capable, &model.context(), &borrow(&text))?;
@@ -174,18 +183,23 @@ pub fn entities(args: ScoredArgs) -> RoutineResult<Vec<Annotation>> {
     Ok(annotations)
 }
 
-pub fn pii(args: ScoredArgs) -> RoutineResult<Vec<Vec<Entity>>> {
+pub fn pii(args: ScoredArgs) -> Result<Vec<Vec<Entity>>> {
     let (text, min_score, model) = token_args(args)?;
     let capable = model.as_token_classify().ok_or_else(|| model.cannot("token-classify"))?;
     let out = tasks::pii(capable, &model.context(), &borrow(&text), min_score)?;
     Ok(out)
 }
 
-pub fn summarize(args: TextArgs) -> RoutineResult<Vec<Artifact>> {
+pub fn summarize(args: SummarizeArgs) -> Result<Vec<Artifact>> {
     let api_key = args.model.api_key.clone();
     let model = load(&args.model.resolve(defaults::generate())?, &api_key)?;
     let capable = model.as_generate().ok_or_else(|| model.cannot("generate"))?;
-    let out = tasks::summarize(capable, &model.context(), &borrow(&args.text))?;
+    let opts = GenOpts {
+        beams: args.beams,
+        max_len: args.max_len,
+        ..GenOpts::default()
+    };
+    let out = tasks::summarize(capable, &model.context(), &borrow(&args.text), &opts)?;
     let artifacts: Vec<Artifact> = out
         .into_iter()
         .map(|summary| Artifact {
@@ -198,7 +212,7 @@ pub fn summarize(args: TextArgs) -> RoutineResult<Vec<Artifact>> {
     Ok(artifacts)
 }
 
-fn token_args(args: ScoredArgs) -> RoutineResult<TokenArgs> {
+fn token_args(args: ScoredArgs) -> Result<TokenArgs> {
     let api_key = args.model.api_key.clone();
     let model = load(&args.model.resolve(defaults::token_classify())?, &api_key)?;
     Ok((args.text, args.min_score, model))

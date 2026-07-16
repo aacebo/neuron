@@ -64,6 +64,7 @@ pub struct Word {
 pub struct GenOpts {
     pub prompt: &'static str,
     pub max_len: Option<usize>,
+    pub beams: Option<usize>,
 }
 
 impl Default for GenOpts {
@@ -72,6 +73,7 @@ impl Default for GenOpts {
             prompt: "Summarize the text the user gives you. Be concise and factual; use only \
                      information present in the text.",
             max_len: None,
+            beams: None,
         }
     }
 }

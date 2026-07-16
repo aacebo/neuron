@@ -37,13 +37,22 @@ impl Summarizer {
 }
 
 impl Generate for Summarizer {
-    fn generate(&self, cx: &Context, text: &[&str], _opts: &GenOpts) -> Result<Vec<String>> {
-        text.iter().map(|text| self.one(cx, text)).collect()
+    fn generate(&self, cx: &Context, text: &[&str], opts: &GenOpts) -> Result<Vec<String>> {
+        let mut generation = self.generation;
+
+        if let Some(beams) = opts.beams {
+            generation = generation.beams(beams);
+        }
+        if let Some(max_len) = opts.max_len {
+            generation = generation.max_length(max_len);
+        }
+
+        text.iter().map(|text| self.one(cx, text, &generation)).collect()
     }
 }
 
 impl Summarizer {
-    fn one(&self, cx: &Context, text: &str) -> Result<String> {
+    fn one(&self, cx: &Context, text: &str, generation: &generate::Config) -> Result<String> {
         let encoding = cx.encode_one(text)?;
         let ids = encoding.get_ids();
 
@@ -57,7 +66,7 @@ impl Summarizer {
             .lock()
             .map_err(|_| Error::Inference("summarization model lock poisoned".to_string()))?;
 
-        let tokens = generate::run(&mut model, &self.generation, &input, cx.device())?;
+        let tokens = generate::run(&mut model, generation, &input, cx.device())?;
 
         cx.tokenizer()?
             .decode(&tokens, true)

@@ -47,8 +47,8 @@ pub fn pii<T: TokenClassify + ?Sized>(model: &T, cx: &Context, text: &[&str], mi
     model.pii(cx, text, min_score)
 }
 
-pub fn summarize<G: Generate + ?Sized>(model: &G, cx: &Context, text: &[&str]) -> Result<Vec<String>> {
-    model.generate(cx, text, &GenOpts::default())
+pub fn summarize<G: Generate + ?Sized>(model: &G, cx: &Context, text: &[&str], opts: &GenOpts) -> Result<Vec<String>> {
+    model.generate(cx, text, opts)
 }
 
 /// Char offsets, not byte offsets: a span is reported in the units the caller sees.

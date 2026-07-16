@@ -1,8 +1,11 @@
+use ai::{Error, Result};
 use storage::types::{ArtifactContent, Job, MessageAnnotation, MessageArtifact, Span, TextArtifact};
+
+type BoxResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 use crate::context::EventContext;
 
-pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> BoxResult<()> {
     let storage = ctx.storage();
     let job = match storage.jobs().get(ctx.event().body.id).await? {
         Some(j) => j,
@@ -30,34 +33,57 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn st
             base_url: None,
             api_key: None,
         };
-        let text_args = || ai::pipelines::TextArgs {
-            text: text.clone(),
-            model: model(),
-        };
         let scored = || ai::pipelines::ScoredArgs {
             text: text.clone(),
             min_score: 0.4,
             model: model(),
         };
 
-        let mut annotations = ai::pipelines::keywords(scored())?;
-        annotations.extend(ai::pipelines::sentiment(scored())?);
-        annotations.extend(ai::pipelines::entities(scored())?);
-
-        // pii returns entities, not annotations
-        for entity in ai::pipelines::pii(scored())?.into_iter().flatten() {
-            annotations.push(ai::types::Annotation {
-                name: "pii".to_string(),
-                label: entity.label.to_lowercase(),
-                text: entity.word,
-                score: entity.score,
-                spans: vec![entity.offset],
+        std::thread::scope(|scope| {
+            let keywords = scope.spawn(|| ai::pipelines::keywords(scored()));
+            let sentiment = scope.spawn(|| ai::pipelines::sentiment(scored()));
+            let entities = scope.spawn(|| ai::pipelines::entities(scored()));
+            let pii = scope.spawn(|| ai::pipelines::pii(scored()));
+            let embeddings = scope.spawn(|| {
+                ai::pipelines::embeddings(ai::pipelines::TextArgs {
+                    text: text.clone(),
+                    model: model(),
+                })
             });
-        }
+            let summary = scope.spawn(|| {
+                ai::pipelines::summarize(ai::pipelines::SummarizeArgs {
+                    text: text.clone(),
+                    model: model(),
+                    beams: Some(1),
+                    max_len: Some(64),
+                })
+            });
 
-        let mut artifacts = ai::pipelines::embeddings(text_args())?;
-        artifacts.extend(ai::pipelines::summarize(text_args())?);
-        Ok::<_, Box<dyn std::error::Error>>((annotations, artifacts))
+            fn join<T>(handle: std::thread::ScopedJoinHandle<'_, Result<T>>) -> Result<T> {
+                match handle.join() {
+                    Ok(result) => result,
+                    Err(_) => Err(Error::Inference("inference thread panicked".to_string())),
+                }
+            }
+
+            let mut annotations = join(keywords)?;
+            annotations.extend(join(sentiment)?);
+            annotations.extend(join(entities)?);
+
+            for entity in join(pii)?.into_iter().flatten() {
+                annotations.push(ai::types::Annotation {
+                    name: "pii".to_string(),
+                    label: entity.label.to_lowercase(),
+                    text: entity.word,
+                    score: entity.score,
+                    spans: vec![entity.offset],
+                });
+            }
+
+            let mut artifacts = join(embeddings)?;
+            artifacts.extend(join(summary)?);
+            Ok::<_, Error>((annotations, artifacts))
+        })
     });
 
     let (annotations, artifacts) = match output {
@@ -77,7 +103,7 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn st
     };
 
     let message_id = messages.first().map(|m| m.id).unwrap();
-    let persist_result: Result<(), Box<dyn std::error::Error>> = async {
+    let persist_result: BoxResult<()> = async {
         for annotation in &annotations {
             let spans = annotation.spans.iter().map(|s| Span::new(s.begin, s.end)).collect();
             storage
