@@ -12,6 +12,7 @@
     animation: indeterminate 1.4s ease-in-out infinite;
     width: 50%;
 }
+[x-cloak] { display: none !important; }
 </style>
 
 <script id="console-message" type="application/json">{{ message|json|safe }}</script>
@@ -86,29 +87,67 @@
                     <p class="text-gray-500 text-sm">None</p>
                 </template>
                 <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
-                    <template x-for="(ann, i) in (result ? result.annotations : [])" :key="i">
-                        <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 flex items-center gap-3 text-sm">
-                            <span
-                                class="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full"
-                                :class="badgeClass(ann.type)"
-                                x-text="ann.type"
-                            ></span>
-                            <span class="text-gray-200 truncate flex-1" x-text="ann.label"></span>
-                            <div class="shrink-0 flex items-center gap-2 w-24">
-                                <div class="flex-1 bg-gray-800 rounded-full h-1.5">
-                                    <div
-                                        class="bg-gray-400 h-1.5 rounded-full"
-                                        :style="'width:' + Math.round(ann.score * 100) + '%'"
-                                    ></div>
+                    <template x-for="(grp, gi) in groupedAnnotations" :key="gi">
+                        <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                            <!-- Collapsed header: overlapping badges (stacked-avatar style) -->
+                            <button
+                                type="button"
+                                @click="toggleGroup(grp.key)"
+                                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-gray-800/40 transition-colors"
+                            >
+                                <!-- stacked type badges -->
+                                <div class="shrink-0 flex flex-row-reverse justify-end">
+                                    <template x-for="(ann, ai) in grp.items" :key="ai">
+                                        <span
+                                            class="text-xs font-medium px-2 py-0.5 rounded-full ring-2 ring-gray-900 -ml-2 first:ml-0"
+                                            :class="badgeClass(ann.type)"
+                                            :style="'z-index:' + (grp.items.length - ai)"
+                                            :title="ann.type"
+                                            x-text="ann.type"
+                                        ></span>
+                                    </template>
                                 </div>
-                                <span class="text-gray-500 text-xs w-8 text-right" x-text="ann.score.toFixed(2)"></span>
+                                <span class="text-gray-200 truncate flex-1 min-w-0" x-text="grp.label"></span>
+                                <template x-if="grp.start !== null">
+                                    <span
+                                        class="shrink-0 text-gray-600 text-xs font-mono"
+                                        x-text="grp.start + '-' + grp.end"
+                                    ></span>
+                                </template>
+                                <!-- chevron -->
+                                <svg
+                                    class="shrink-0 w-4 h-4 text-gray-500 transition-transform"
+                                    :class="isExpanded(grp.key) ? 'rotate-180' : ''"
+                                    viewBox="0 0 20 20" fill="currentColor"
+                                >
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+
+                            <!-- Expanded detail: indented label -> score list -->
+                            <div x-show="isExpanded(grp.key)" x-cloak class="px-4 pb-3 pt-0 border-t border-gray-800/70">
+                                <div class="space-y-1.5 pt-2 pl-3">
+                                    <template x-for="(ann, ai) in grp.items" :key="ai">
+                                        <div class="flex items-center gap-3">
+                                            <span
+                                                class="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full"
+                                                :class="badgeClass(ann.type)"
+                                                x-text="ann.type"
+                                            ></span>
+                                            <span class="text-gray-300 truncate flex-1 min-w-0" x-text="ann.label"></span>
+                                            <div class="shrink-0 flex items-center gap-2 w-24">
+                                                <div class="flex-1 bg-gray-800 rounded-full h-1.5">
+                                                    <div
+                                                        class="bg-gray-400 h-1.5 rounded-full"
+                                                        :style="'width:' + Math.round(ann.score * 100) + '%'"
+                                                    ></div>
+                                                </div>
+                                                <span class="text-gray-500 text-xs w-8 text-right" x-text="ann.score.toFixed(2)"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
                             </div>
-                            <template x-if="ann.spans && ann.spans.length > 0">
-                                <span
-                                    class="shrink-0 text-gray-600 text-xs font-mono"
-                                    x-text="ann.spans[0].start + '-' + ann.spans[0].end"
-                                ></span>
-                            </template>
                         </div>
                     </template>
                 </div>
@@ -350,6 +389,50 @@ document.addEventListener('alpine:init', () => {
                 i = j;
             }
             return segs;
+        },
+
+        get groupedAnnotations() {
+            if (!this.result) return [];
+            const anns = this.result.annotations ?? [];
+            const fullText = this.result.text ?? '';
+            const chars = Array.from(fullText);
+            const groups = new Map(); // key "start-end" -> { key, start, end, label, items: [] }
+
+            for (const ann of anns) {
+                const spans = (ann.spans && ann.spans.length) ? ann.spans : [null];
+                for (const span of spans) {
+                    const start = span ? Number(span.start) : null;
+                    const end   = span ? Number(span.end)   : null;
+                    const key = span ? `${start}-${end}` : `nospan-${groups.size}`;
+                    if (!groups.has(key)) {
+                        // Label for the collapsed row: the annotated text for this span.
+                        const label = span
+                            ? (chars.slice(start, end).join('') || ann.text || ann.label)
+                            : (ann.text || ann.label);
+                        groups.set(key, { key, start, end, label, items: [] });
+                    }
+                    groups.get(key).items.push(ann);
+                }
+            }
+
+            const out = [...groups.values()];
+            // stable order by span start, unspanned last
+            out.sort((a, b) => {
+                if (a.start === null) return 1;
+                if (b.start === null) return -1;
+                return a.start - b.start;
+            });
+            return out;
+        },
+
+        expandedGroups: {},
+
+        toggleGroup(key) {
+            this.expandedGroups[key] = !this.expandedGroups[key];
+        },
+
+        isExpanded(key) {
+            return !!this.expandedGroups[key];
         },
 
         badgeClass(type) {
