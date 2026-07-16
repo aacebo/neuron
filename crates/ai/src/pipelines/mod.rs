@@ -6,22 +6,20 @@ pub mod generate;
 pub use cache::{Cache, Key};
 pub use common::Batch;
 
-use crate::models::{Loaded, ModelId, ModelRef, Provider};
-use crate::resources::Uri;
+use crate::models::{Model, ModelId, ModelRef, Provider};
 use crate::types::{Annotation, Artifact, ArtifactContent, Entity, Offset};
 use crate::{Error, Result, tasks};
 
-static MODELS: std::sync::LazyLock<Cache<crate::models::Loaded>> = std::sync::LazyLock::new(Cache::new);
+static MODELS: std::sync::LazyLock<Cache<crate::models::Model>> = std::sync::LazyLock::new(Cache::new);
 const TOP_N: usize = 5;
 
-type TokenArgs = (Vec<String>, f64, std::sync::Arc<Loaded>);
+type TokenArgs = (Vec<String>, f64, std::sync::Arc<Model>);
 type RoutineResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TextArgs {
     pub text: Vec<String>,
     pub model: ModelArgs,
-    pub api_key: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -29,14 +27,14 @@ pub struct ScoredArgs {
     pub text: Vec<String>,
     pub min_score: f64,
     pub model: ModelArgs,
-    pub api_key: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ModelArgs {
-    provider: Option<String>,
-    model: Option<String>,
-    base_url: Option<String>,
+    pub provider: Option<String>,
+    pub model: Option<String>,
+    pub base_url: Option<String>,
+    pub api_key: Option<String>,
 }
 
 impl ModelArgs {
@@ -46,10 +44,7 @@ impl ModelArgs {
                 return Ok(default);
             };
 
-            return Ok(match is_uri(&model) {
-                true => ModelRef::local(model.parse::<Uri>()?),
-                false => ModelRef::hub(model.parse::<ModelId>()?),
-            });
+            return Ok(model.parse()?);
         };
 
         let provider: Provider = provider.parse()?;
@@ -57,13 +52,9 @@ impl ModelArgs {
             .model
             .ok_or(Error::inference("model is required when provider is set"))?
             .parse()?;
+
         Ok(ModelRef::remote(provider, id).base_url(self.base_url))
     }
-}
-
-fn is_uri(model: &str) -> bool {
-    let scheme = model.starts_with("file://") || model.starts_with("http://") || model.starts_with("https://");
-    scheme || std::path::Path::new(model).is_dir()
 }
 
 pub fn borrow(text: &[String]) -> Vec<&str> {
@@ -72,11 +63,11 @@ pub fn borrow(text: &[String]) -> Vec<&str> {
 
 /// One cache of loaded models, keyed by `(model, api_key)` -- not one per capability. A model used
 /// for two routines now loads its weights once.
-pub fn load(model: &ModelRef, api_key: &Option<String>) -> Result<std::sync::Arc<crate::models::Loaded>> {
+pub fn load(model: &ModelRef, api_key: &Option<String>) -> Result<std::sync::Arc<crate::models::Model>> {
     use candle_core::{DType, Device};
 
     MODELS.get_or_build(Key::new(model, api_key), || {
-        Ok(std::sync::Arc::new(crate::models::Loaded::new(
+        Ok(std::sync::Arc::new(crate::models::Model::new(
             model,
             api_key,
             Device::Cpu,
@@ -90,7 +81,8 @@ pub fn load(model: &ModelRef, api_key: &Option<String>) -> Result<std::sync::Arc
 /// that cannot do the job fails here, by name, instead of part-way through inference.
 
 pub fn embeddings(args: TextArgs) -> RoutineResult<Vec<Artifact>> {
-    let model = load(&args.model.resolve(defaults::embed())?, &args.api_key)?;
+    let api_key = args.model.api_key.clone();
+    let model = load(&args.model.resolve(defaults::embed())?, &api_key)?;
     let capable = model.as_embed().ok_or_else(|| model.cannot("embed"))?;
     let out = tasks::embed(capable, &model.context(), &borrow(&args.text))?;
     let artifacts: Vec<Artifact> = out
@@ -107,7 +99,8 @@ pub fn embeddings(args: TextArgs) -> RoutineResult<Vec<Artifact>> {
 }
 
 pub fn keywords(args: ScoredArgs) -> RoutineResult<Vec<Annotation>> {
-    let model = load(&args.model.resolve(defaults::keywords())?, &args.api_key)?;
+    let api_key = args.model.api_key.clone();
+    let model = load(&args.model.resolve(defaults::keywords())?, &api_key)?;
     let capable = model.as_embed().ok_or_else(|| model.cannot("embed"))?;
     let out = tasks::keywords(capable, &model.context(), &borrow(&args.text), TOP_N)?;
     let min_score = args.min_score as f32;
@@ -129,7 +122,8 @@ pub fn keywords(args: ScoredArgs) -> RoutineResult<Vec<Annotation>> {
 }
 
 pub fn sentiment(args: ScoredArgs) -> RoutineResult<Vec<Annotation>> {
-    let model = load(&args.model.resolve(defaults::classify())?, &args.api_key)?;
+    let api_key = args.model.api_key.clone();
+    let model = load(&args.model.resolve(defaults::classify())?, &api_key)?;
     let capable = model.as_classify().ok_or_else(|| model.cannot("classify"))?;
     let out = tasks::sentiment(capable, &model.context(), &borrow(&args.text))?;
     let mut annotations: Vec<Annotation> = Vec::new();
@@ -188,7 +182,8 @@ pub fn pii(args: ScoredArgs) -> RoutineResult<Vec<Vec<Entity>>> {
 }
 
 pub fn summarize(args: TextArgs) -> RoutineResult<Vec<Artifact>> {
-    let model = load(&args.model.resolve(defaults::generate())?, &args.api_key)?;
+    let api_key = args.model.api_key.clone();
+    let model = load(&args.model.resolve(defaults::generate())?, &api_key)?;
     let capable = model.as_generate().ok_or_else(|| model.cannot("generate"))?;
     let out = tasks::summarize(capable, &model.context(), &borrow(&args.text))?;
     let artifacts: Vec<Artifact> = out
@@ -204,7 +199,8 @@ pub fn summarize(args: TextArgs) -> RoutineResult<Vec<Artifact>> {
 }
 
 fn token_args(args: ScoredArgs) -> RoutineResult<TokenArgs> {
-    let model = load(&args.model.resolve(defaults::token_classify())?, &args.api_key)?;
+    let api_key = args.model.api_key.clone();
+    let model = load(&args.model.resolve(defaults::token_classify())?, &api_key)?;
     Ok((args.text, args.min_score, model))
 }
 
@@ -247,6 +243,7 @@ mod tests {
             provider: None,
             model: Some(model.to_string()),
             base_url: None,
+            api_key: None,
         }
     }
 
@@ -280,6 +277,7 @@ mod tests {
             provider: None,
             model: None,
             base_url: None,
+            api_key: None,
         }
         .resolve(defaults::embed())
         .unwrap();
@@ -288,6 +286,7 @@ mod tests {
             provider: None,
             model: None,
             base_url: None,
+            api_key: None,
         }
         .resolve(defaults::keywords())
         .unwrap();

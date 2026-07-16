@@ -3,7 +3,6 @@ pub mod bert;
 pub mod distilbert;
 
 mod capability;
-mod loaded;
 mod loader;
 mod model_id;
 mod provider;
@@ -15,7 +14,6 @@ use std::sync::Arc;
 
 use candle_core::{DType, Device};
 pub use capability::{Classify, Context, Embed, GenOpts, Generate, Label, TokenClassify, Word};
-pub use loaded::Loaded;
 pub use loader::Loader;
 pub use model_id::ModelId;
 pub use provider::Provider;
@@ -94,6 +92,129 @@ impl std::fmt::Display for Architecture {
     }
 }
 
+/// A model with its weights loaded (or, for a remote model, its endpoint bound). The variant
+/// determines which capabilities exist: the `None` arms below are the empty cells of the matrix.
+pub enum AnyModel {
+    Embedder(bert::Embedder),
+    TokenClassifier(bert::TokenClassifier),
+    SequenceClassifier(distilbert::SequenceClassifier),
+    Summarizer(bart::Summarizer),
+    Remote(RemoteModel),
+}
+
+/// A loaded model plus the tokenizer and device it needs to see text. Lends a [`Context`] per
+/// call, so one set of weights serves every capability the model has.
+pub struct Model {
+    name: String,
+    model: AnyModel,
+    device: Device,
+    tokenizer: Option<tokenizers::Tokenizer>,
+}
+
+impl Model {
+    pub fn new(model: &ModelRef, api_key: &Option<String>, device: Device, dtype: DType) -> Result<Self> {
+        let name = model.to_string();
+
+        match model {
+            ModelRef::Remote(remote) => Ok(Self {
+                name,
+                model: AnyModel::Remote(remote.clone().api_key(api_key.clone())),
+                device,
+                tokenizer: None,
+            }),
+            ModelRef::Local(local) => Self::local(local, device, dtype, name),
+        }
+    }
+
+    pub fn local(model: &LocalModel, device: Device, dtype: DType, name: String) -> Result<Self> {
+        let repo = model.loader(device, dtype)?;
+        let device = repo.device().clone();
+        let tokenizer = repo.tokenizer()?;
+
+        // `config.json` names the architecture; the architecture decides which capabilities the
+        // weights can serve.
+        let architecture: Probe = repo.config()?;
+
+        let model = match architecture.architecture {
+            Architecture::Bart => {
+                let config: bart::Config = repo.config()?;
+                AnyModel::Summarizer(bart::Summarizer::new(&config, repo.vars()?)?)
+            }
+            Architecture::DistilBert => {
+                let config: distilbert::Config = repo.config()?;
+                AnyModel::SequenceClassifier(distilbert::SequenceClassifier::new(repo.vars()?, &config)?)
+            }
+            // A BERT checkpoint is an embedder or a token classifier depending on whether it
+            // carries a label map -- a classification head is exactly what `id2label` announces.
+            Architecture::Bert | Architecture::Unknown => {
+                let config: bert::Config = repo.config()?;
+
+                match config.has_labels() {
+                    true => AnyModel::TokenClassifier(bert::TokenClassifier::new(repo.vars()?, &config)?),
+                    false => AnyModel::Embedder(bert::Embedder::new(repo.vars()?, &config)?),
+                }
+            }
+            other => {
+                return Err(Error::Load(format!("{name} has unsupported architecture `{other}`")));
+            }
+        };
+
+        Ok(Self {
+            model,
+            tokenizer: Some(tokenizer),
+            device,
+            name,
+        })
+    }
+
+    pub fn context(&self) -> Context<'_> {
+        Context::new(self.tokenizer.as_ref(), &self.device, &self.name)
+    }
+
+    pub fn as_embed(&self) -> Option<&dyn Embed> {
+        match &self.model {
+            AnyModel::Embedder(model) => Some(model),
+            AnyModel::Remote(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    pub fn as_classify(&self) -> Option<&dyn Classify> {
+        match &self.model {
+            AnyModel::SequenceClassifier(model) => Some(model),
+            AnyModel::Remote(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_classify(&self) -> Option<&dyn TokenClassify> {
+        match &self.model {
+            AnyModel::TokenClassifier(model) => Some(model),
+            AnyModel::Remote(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    pub fn as_generate(&self) -> Option<&dyn Generate> {
+        match &self.model {
+            AnyModel::Summarizer(model) => Some(model),
+            AnyModel::Remote(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    pub fn cannot(&self, capability: &str) -> Error {
+        Error::Inference(format!("{} cannot {capability}", self.name))
+    }
+}
+
+/// Reads just the architecture out of `config.json`, before committing to a concrete config type.
+#[derive(serde::Deserialize)]
+struct Probe {
+    #[serde(default, rename = "model_type")]
+    architecture: Architecture,
+}
+
 /// A model whose weights we load and run ourselves. Every variant has weights, so `repository`
 /// and `loader` are total -- a model with no weights cannot be built as a `LocalModel`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -163,10 +284,6 @@ impl RemoteModel {
     }
 }
 
-/// Identity is the endpoint, not the credential. `RemoteModel` sits inside the cache
-/// [`Key`](crate::pipelines::Key), which fingerprints the api key rather than storing it -- so
-/// hashing the raw key here would put it in a long-lived map, and two keys against the same
-/// endpoint would wrongly look like different models.
 impl PartialEq for RemoteModel {
     fn eq(&self, other: &Self) -> bool {
         self.provider == other.provider && self.id == other.id && self.base_url == other.base_url
@@ -221,6 +338,20 @@ impl ModelRef {
         match self {
             Self::Local(model) => Ok(model),
             Self::Remote(remote) => Err(Error::Load(format!("{remote} is a remote model and has no weights"))),
+        }
+    }
+}
+
+impl FromStr for ModelRef {
+    type Err = Error;
+
+    fn from_str(model: &str) -> std::result::Result<Self, Self::Err> {
+        let scheme = model.starts_with("file://") || model.starts_with("http://") || model.starts_with("https://");
+
+        if scheme || std::path::Path::new(model).is_dir() {
+            Ok(ModelRef::local(model.parse::<Uri>()?))
+        } else {
+            Ok(ModelRef::hub(model.parse::<ModelId>()?))
         }
     }
 }

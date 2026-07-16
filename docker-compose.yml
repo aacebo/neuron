@@ -49,6 +49,7 @@ services:
 
   executor:
     container_name: executor
+    platform: linux/amd64
     build:
       context: .
       dockerfile: bins/executor/Dockerfile

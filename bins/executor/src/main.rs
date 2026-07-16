@@ -1,6 +1,3 @@
-use rust_bert::pipelines::common::{ModelResource, ModelType, ONNXModelResources};
-use rust_bert::pipelines::token_classification::{LabelAggregationOption, TokenClassificationConfig};
-use rust_bert::resources::RemoteResource;
 use sqlx::postgres::PgPoolOptions;
 
 mod config;
@@ -29,49 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .expect("Failed to connect to AMQP");
 
-    let cortex = tokio::task::spawn_blocking(|| {
-        cortex::CortexConfig::new()
-            .with_sentence_embeddings(rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsConfig::from(
-                rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModelType::AllMiniLmL12V2,
-            ))
-            .with_entity_extraction(rust_bert::pipelines::token_classification::TokenClassificationConfig::default())
-            .with_keyword_extraction(rust_bert::pipelines::keywords_extraction::KeywordExtractionConfig::default())
-            .with_pii_extraction(TokenClassificationConfig::new(
-                ModelType::Bert,
-                ModelResource::ONNX(ONNXModelResources {
-                    encoder_resource: Some(Box::new(RemoteResource::new(
-                        "https://huggingface.co/rtrigoso/bert-small-pii-detection-ONNX/resolve/main/onnx/model.onnx",
-                        "bert-small-pii-detection",
-                    ))),
-                    ..Default::default()
-                }),
-                RemoteResource::new(
-                    "https://huggingface.co/rtrigoso/bert-small-pii-detection-ONNX/resolve/main/config.json",
-                    "bert-small-pii-detection",
-                ),
-                RemoteResource::new(
-                    "https://huggingface.co/rtrigoso/bert-small-pii-detection-ONNX/resolve/main/vocab.txt",
-                    "bert-small-pii-detection",
-                ),
-                None::<RemoteResource>,
-                false,
-                None,
-                None,
-                LabelAggregationOption::Mode,
-            ))
-            .with_sentiment(rust_bert::pipelines::sentiment::SentimentConfig::default())
-            .with_summarization({
-                let mut config = rust_bert::pipelines::summarization::SummarizationConfig::default();
-                config.min_length = 8;
-                config.max_length = Some(64);
-                config
-            })
-            .build()
-    })
-    .await?
-    .expect("Failed to spawn cortex build task");
-
-    let ctx = Context::new(&pool, &socket, &cortex);
+    let ctx = Context::new(&pool, &socket);
     let mut message_consumer = socket.consume(amqp::Key::new("message", amqp::Action::Create)).await?;
     let mut job_consumer = socket.consume(amqp::Key::new("job", amqp::Action::Create)).await?;
 

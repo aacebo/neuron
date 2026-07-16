@@ -10,6 +10,3 @@ license = "MIT"
 
 [workspace.lints.clippy]
 type_complexity = "allow"
-
-[patch.crates-io]
-ort = { git = "https://github.com/pykeio/ort.git", tag = "v1.16.3" }

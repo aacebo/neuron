@@ -1,5 +1,3 @@
-use cortex::types::CortexArtifact;
-use cortex::{CortexInput, Routine};
 use storage::types::{ArtifactContent, Job, MessageAnnotation, MessageArtifact, Span, TextArtifact};
 
 use crate::context::EventContext;
@@ -25,15 +23,44 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn st
     let messages = storage.messages().get_by_job(job.id).await?;
     let text = messages.first().map(|m| m.text.clone()).unwrap_or_default();
     let output = tokio::task::block_in_place(|| {
-        let binding = [text.as_str()];
-        let input = CortexInput::new(&binding).with_min_score(0.4);
-        let out = ctx.cortex().pipeline().invoke(input)?;
-        Ok::<_, cortex::CortexError>(out)
+        let text = vec![text.clone()];
+        let model = || ai::pipelines::ModelArgs {
+            provider: None,
+            model: None,
+            base_url: None,
+            api_key: None,
+        };
+        let text_args = || ai::pipelines::TextArgs {
+            text: text.clone(),
+            model: model(),
+        };
+        let scored = || ai::pipelines::ScoredArgs {
+            text: text.clone(),
+            min_score: 0.4,
+            model: model(),
+        };
+
+        let mut annotations = ai::pipelines::keywords(scored())?;
+        annotations.extend(ai::pipelines::sentiment(scored())?);
+        annotations.extend(ai::pipelines::entities(scored())?);
+
+        // pii returns entities, not annotations
+        for entity in ai::pipelines::pii(scored())?.into_iter().flatten() {
+            annotations.push(ai::types::Annotation {
+                name: "pii".to_string(),
+                label: entity.label.to_lowercase(),
+                text: entity.word,
+                score: entity.score,
+                spans: vec![entity.offset],
+            });
+        }
+
+        let mut artifacts = ai::pipelines::embeddings(text_args())?;
+        artifacts.extend(ai::pipelines::summarize(text_args())?);
+        Ok::<_, Box<dyn std::error::Error>>((annotations, artifacts))
     });
 
-    let pipeline_result: Result<cortex::CortexOutput, Box<dyn std::error::Error>> =
-        output.map_err(|e| Box::new(e) as Box<dyn std::error::Error>);
-    let output = match pipeline_result {
+    let (annotations, artifacts) = match output {
         Ok(o) => o,
         Err(e) => {
             let job = job.fail(e.to_string());
@@ -51,13 +78,13 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn st
 
     let message_id = messages.first().map(|m| m.id).unwrap();
     let persist_result: Result<(), Box<dyn std::error::Error>> = async {
-        for annotation in &output.annotations {
-            let spans = annotation.spans.iter().map(|s| Span::new(s.start, s.end)).collect();
+        for annotation in &annotations {
+            let spans = annotation.spans.iter().map(|s| Span::new(s.begin, s.end)).collect();
             storage
                 .annotations()
                 .create(&MessageAnnotation::new(
                     message_id,
-                    &annotation.r#type,
+                    &annotation.name,
                     &annotation.label,
                     &annotation.text,
                     annotation.score,
@@ -66,15 +93,14 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn st
                 .await?;
         }
 
-        for artifact in output.artifacts {
-            let row = match artifact {
-                CortexArtifact::Text(s) => MessageArtifact::new(
-                    message_id,
-                    s.name,
-                    ArtifactContent::Text(TextArtifact { text: s.text.clone() }),
-                    s.vector,
-                ),
-            };
+        for artifact in artifacts {
+            let Some(text) = artifact.value.as_text() else { continue };
+            let row = MessageArtifact::new(
+                message_id,
+                artifact.name.clone(),
+                ArtifactContent::Text(TextArtifact { text: text.to_string() }),
+                artifact.vector.clone(),
+            );
 
             storage.artifacts().create(&row).await?;
         }
