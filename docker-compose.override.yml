@@ -7,20 +7,20 @@ services:
       - .:/app
       - api-target:/app/target
       - api-cargo-registry:/usr/local/cargo/registry
-    command: cargo run --package api
+    command: cargo run --release --package api
 
   executor:
     build:
       target: builder
     working_dir: /app
     environment:
-      RUSTBERT_CACHE: /app/.cache
+      NEURON_CACHE: /app/.cache
     volumes:
       - .:/app
       - executor-target:/app/target
       - executor-cargo-registry:/usr/local/cargo/registry
       - ./.cache:/app/.cache
-    command: cargo run --package executor
+    command: cargo run --release --package executor
 
 volumes:
   api-target:
