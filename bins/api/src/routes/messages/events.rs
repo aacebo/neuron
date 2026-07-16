@@ -9,10 +9,9 @@ use crate::RequestContext;
 use crate::views::MessageView;
 
 #[get("/messages/{id}/events")]
-pub async fn events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> HttpResponse {
+pub async fn get_events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> HttpResponse {
     let id = path.into_inner();
     let pool = ctx.pool().clone();
-
     let s = stream::unfold((false, None::<Vec<(uuid::Uuid, JobStatus)>>), move |(done, last_jobs)| {
         let pool = pool.clone();
         async move {
