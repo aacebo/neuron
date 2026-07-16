@@ -1,11 +1,10 @@
-# Pinned to linux/amd64: candle's gemm backend fails to build on linux/arm64 (fullfp16 asm).
-FROM --platform=linux/amd64 rust:bookworm AS builder
+FROM rust:bookworm AS builder
 
 WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    pkg-config libssl-dev \
+    pkg-config libssl-dev clang lld \
     && rm -rf /var/lib/apt/lists/*
 
 COPY rust-toolchain.toml ./
@@ -20,7 +19,7 @@ COPY bins ./bins
 RUN cargo build --release --package executor
 
 # Runtime stage
-FROM --platform=linux/amd64 debian:bookworm-slim
+FROM debian:bookworm-slim
 
 WORKDIR /app
 
