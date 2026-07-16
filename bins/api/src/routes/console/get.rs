@@ -26,10 +26,7 @@ pub async fn get() -> Result<web::Html, actix_web::Error> {
 }
 
 #[get("/console/{message_id}")]
-pub async fn get_run(
-    ctx: RequestContext,
-    path: web::Path<uuid::Uuid>,
-) -> Result<web::Html, actix_web::Error> {
+pub async fn get_run(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> Result<web::Html, actix_web::Error> {
     let message_id = path.into_inner();
     let message = MessageView::get(&ctx.storage(), message_id)
         .await

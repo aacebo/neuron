@@ -18,10 +18,7 @@ impl<'a> AnnotationStorage<'a> {
             .await
     }
 
-    pub async fn get_by_message(
-        &self,
-        message_id: uuid::Uuid,
-    ) -> Result<Vec<MessageAnnotation>, sqlx::Error> {
+    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<MessageAnnotation>, sqlx::Error> {
         sqlx::query_as::<_, MessageAnnotation>(
             "SELECT * FROM message_annotations WHERE message_id = $1 ORDER BY score DESC, created_at ASC, id ASC",
         )
@@ -30,10 +27,7 @@ impl<'a> AnnotationStorage<'a> {
         .await
     }
 
-    pub async fn create(
-        &self,
-        annotation: &MessageAnnotation,
-    ) -> Result<MessageAnnotation, sqlx::Error> {
+    pub async fn create(&self, annotation: &MessageAnnotation) -> Result<MessageAnnotation, sqlx::Error> {
         sqlx::query_as::<_, MessageAnnotation>(
             r#"
             INSERT INTO message_annotations
@@ -53,10 +47,7 @@ impl<'a> AnnotationStorage<'a> {
         .await
     }
 
-    pub async fn update(
-        &self,
-        annotation: &MessageAnnotation,
-    ) -> Result<MessageAnnotation, sqlx::Error> {
+    pub async fn update(&self, annotation: &MessageAnnotation) -> Result<MessageAnnotation, sqlx::Error> {
         sqlx::query_as::<_, MessageAnnotation>(
             r#"
             UPDATE message_annotations

@@ -53,7 +53,6 @@ pub mod types;
 pub use types::*;
 
 pub mod values;
-pub use values::*;
-
 #[cfg(feature = "macros")]
 pub use reflect_macros::*;
+pub use values::*;

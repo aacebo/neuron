@@ -95,13 +95,7 @@ impl PiiEntities {
 
         if self.should_start_new(tag, label, offset.begin) {
             self.finish_current();
-            self.current = Some(PiiEntityBuilder::new(
-                &token,
-                tag,
-                label,
-                offset.begin,
-                offset.end,
-            ));
+            self.current = Some(PiiEntityBuilder::new(&token, tag, label, offset.begin, offset.end));
         } else if let Some(current) = self.current.as_mut() {
             current.push(&token, tag, offset.end);
         }
@@ -113,10 +107,7 @@ impl PiiEntities {
 
     fn finish(mut self) -> Vec<types::CortexAnnotation> {
         self.finish_current();
-        self.finished
-            .into_iter()
-            .map(|entity| entity.annotation)
-            .collect()
+        self.finished.into_iter().map(|entity| entity.annotation).collect()
     }
 
     fn should_start_new(&self, tag: EntityTag, label: &str, start: u32) -> bool {
@@ -161,11 +152,8 @@ struct PiiEntity {
 
 impl PiiEntity {
     fn can_merge(&self, other: &Self) -> bool {
-        self.annotation
-            .label
-            .eq_ignore_ascii_case(&other.annotation.label)
-            && self.annotation.spans.first().map(|span| span.end)
-                == other.annotation.spans.first().map(|span| span.start)
+        self.annotation.label.eq_ignore_ascii_case(&other.annotation.label)
+            && self.annotation.spans.first().map(|span| span.end) == other.annotation.spans.first().map(|span| span.start)
     }
 
     fn merge(&mut self, other: Self) {
@@ -177,10 +165,7 @@ impl PiiEntity {
             / total_tokens as f64;
         self.token_count = total_tokens;
 
-        if let (Some(current), Some(next)) = (
-            self.annotation.spans.first_mut(),
-            other.annotation.spans.first(),
-        ) {
+        if let (Some(current), Some(next)) = (self.annotation.spans.first_mut(), other.annotation.spans.first()) {
             current.end = next.end;
         }
     }

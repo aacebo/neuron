@@ -10,12 +10,7 @@ pub struct MessageArtifact {
 }
 
 impl MessageArtifact {
-    pub fn new(
-        message_id: uuid::Uuid,
-        name: impl Into<String>,
-        content: ArtifactContent,
-        embedding: Option<Vec<f32>>,
-    ) -> Self {
+    pub fn new(message_id: uuid::Uuid, name: impl Into<String>, content: ArtifactContent, embedding: Option<Vec<f32>>) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             message_id,

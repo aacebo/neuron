@@ -18,16 +18,11 @@ impl<'a> ArtifactStorage<'a> {
             .await
     }
 
-    pub async fn get_by_message(
-        &self,
-        message_id: uuid::Uuid,
-    ) -> Result<Vec<MessageArtifact>, sqlx::Error> {
-        sqlx::query_as::<_, MessageArtifact>(
-            "SELECT * FROM message_artifacts WHERE message_id = $1 ORDER BY created_at",
-        )
-        .bind(message_id)
-        .fetch_all(self.pool)
-        .await
+    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<MessageArtifact>, sqlx::Error> {
+        sqlx::query_as::<_, MessageArtifact>("SELECT * FROM message_artifacts WHERE message_id = $1 ORDER BY created_at")
+            .bind(message_id)
+            .fetch_all(self.pool)
+            .await
     }
 
     pub async fn create(&self, artifact: &MessageArtifact) -> Result<MessageArtifact, sqlx::Error> {

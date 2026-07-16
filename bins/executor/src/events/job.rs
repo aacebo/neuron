@@ -1,8 +1,6 @@
 use cortex::types::CortexArtifact;
 use cortex::{CortexInput, Routine};
-use storage::types::{
-    ArtifactContent, Job, MessageAnnotation, MessageArtifact, Span, TextArtifact,
-};
+use storage::types::{ArtifactContent, Job, MessageAnnotation, MessageArtifact, Span, TextArtifact};
 
 use crate::context::EventContext;
 
@@ -54,11 +52,7 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn st
     let message_id = messages.first().map(|m| m.id).unwrap();
     let persist_result: Result<(), Box<dyn std::error::Error>> = async {
         for annotation in &output.annotations {
-            let spans = annotation
-                .spans
-                .iter()
-                .map(|s| Span::new(s.start, s.end))
-                .collect();
+            let spans = annotation.spans.iter().map(|s| Span::new(s.start, s.end)).collect();
             storage
                 .annotations()
                 .create(&MessageAnnotation::new(
@@ -77,9 +71,7 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> Result<(), Box<dyn st
                 CortexArtifact::Text(s) => MessageArtifact::new(
                     message_id,
                     s.name,
-                    ArtifactContent::Text(TextArtifact {
-                        text: s.text.clone(),
-                    }),
+                    ArtifactContent::Text(TextArtifact { text: s.text.clone() }),
                     s.vector,
                 ),
             };

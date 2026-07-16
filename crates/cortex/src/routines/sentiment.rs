@@ -21,11 +21,7 @@ impl<'a> Routine for Sentiment<'a> {
         let out = self.model.predict(input.text);
         let mut output = CortexOutput::default();
 
-        for (i, sentiment) in out
-            .into_iter()
-            .filter(|v| v.score as f32 >= input.min_score)
-            .enumerate()
-        {
+        for (i, sentiment) in out.into_iter().filter(|v| v.score as f32 >= input.min_score).enumerate() {
             let polarity = match sentiment.polarity {
                 sentiment::SentimentPolarity::Negative => "negative",
                 sentiment::SentimentPolarity::Positive => "positive",

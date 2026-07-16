@@ -6,9 +6,7 @@ pub struct LifetimeBound {
 
 impl LifetimeBound {
     pub fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-        }
+        Self { name: name.to_string() }
     }
 
     pub fn to_bound(&self) -> crate::Bound {

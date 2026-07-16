@@ -13,9 +13,7 @@ impl SliceType {
     pub fn id(&self) -> crate::TypeId {
         match self.capacity {
             None => crate::TypeId::from_string(format!("[{}]", &self.ty.id())),
-            Some(capacity) => {
-                crate::TypeId::from_string(format!("[{}; {}]", &self.ty.id(), capacity))
-            }
+            Some(capacity) => crate::TypeId::from_string(format!("[{}; {}]", &self.ty.id(), capacity)),
         }
     }
 

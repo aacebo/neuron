@@ -14,11 +14,9 @@ impl Config {
             .parse()
             .expect("PORT must be a valid number");
 
-        let database_url = env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://admin:admin@localhost:5432/main".to_string());
+        let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://admin:admin@localhost:5432/main".to_string());
 
-        let rabbitmq_url = env::var("RABBITMQ_URL")
-            .unwrap_or_else(|_| "amqp://admin:admin@localhost:5672".to_string());
+        let rabbitmq_url = env::var("RABBITMQ_URL").unwrap_or_else(|_| "amqp://admin:admin@localhost:5672".to_string());
 
         Self {
             port,

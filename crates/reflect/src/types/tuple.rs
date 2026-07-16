@@ -166,11 +166,7 @@ where
     B: crate::TypeOf,
 {
     fn type_of() -> crate::Type {
-        T2Type::new([
-            std::rc::Rc::new(A::type_of()),
-            std::rc::Rc::new(B::type_of()),
-        ])
-        .to_type()
+        T2Type::new([std::rc::Rc::new(A::type_of()), std::rc::Rc::new(B::type_of())]).to_type()
     }
 }
 
@@ -180,11 +176,7 @@ where
     B: Clone + crate::ToType + crate::ToValue + 'static,
 {
     fn to_type(&self) -> crate::Type {
-        T2Type::new([
-            std::rc::Rc::new(self.0.to_type()),
-            std::rc::Rc::new(self.1.to_type()),
-        ])
-        .to_type()
+        T2Type::new([std::rc::Rc::new(self.0.to_type()), std::rc::Rc::new(self.1.to_type())]).to_type()
     }
 }
 

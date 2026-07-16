@@ -16,10 +16,7 @@ impl<'a> SocketProducer<'a> {
         self.socket
     }
 
-    pub async fn enqueue<TBody: serde::Serialize>(
-        &self,
-        event: Event<TBody>,
-    ) -> Result<(), AMQPError> {
+    pub async fn enqueue<TBody: serde::Serialize>(&self, event: Event<TBody>) -> Result<(), AMQPError> {
         let payload = serde_json::to_vec(&event)?;
         let routing_key = event.key.to_string();
 

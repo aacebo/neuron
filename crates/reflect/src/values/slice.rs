@@ -1,9 +1,6 @@
 impl<'a> crate::ToType for &'a [crate::Value<'a>] {
     fn to_type(&self) -> crate::Type {
-        let elem = self
-            .first()
-            .map(crate::ToType::to_type)
-            .unwrap_or(crate::Type::Any);
+        let elem = self.first().map(crate::ToType::to_type).unwrap_or(crate::Type::Any);
 
         crate::Type::Slice(crate::SliceType {
             ty: std::rc::Rc::new(elem),

@@ -1,9 +1,5 @@
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(transparent)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(transparent))]
 pub struct TypeId(&'static str);
 
 thread_local! {

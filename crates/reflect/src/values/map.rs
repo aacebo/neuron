@@ -40,21 +40,15 @@ impl<'a> Map<'a> {
         crate::Type::Map(std::rc::Rc::new(self.ty.clone()))
     }
 
-    pub fn iter(
-        &self,
-    ) -> std::collections::btree_map::Iter<'_, crate::Value<'a>, crate::Value<'a>> {
+    pub fn iter(&self) -> std::collections::btree_map::Iter<'_, crate::Value<'a>, crate::Value<'a>> {
         self.data.iter()
     }
 
-    pub fn keys(
-        &self,
-    ) -> std::collections::btree_map::Keys<'_, crate::Value<'a>, crate::Value<'a>> {
+    pub fn keys(&self) -> std::collections::btree_map::Keys<'_, crate::Value<'a>, crate::Value<'a>> {
         self.data.keys()
     }
 
-    pub fn values(
-        &self,
-    ) -> std::collections::btree_map::Values<'_, crate::Value<'a>, crate::Value<'a>> {
+    pub fn values(&self) -> std::collections::btree_map::Values<'_, crate::Value<'a>, crate::Value<'a>> {
         self.data.values()
     }
 

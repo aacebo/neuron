@@ -2,7 +2,6 @@
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
-
 use storage::Storage;
 
 #[derive(Clone)]
@@ -52,16 +51,8 @@ pub struct EventContext<'a, T> {
 }
 
 impl<'a, T> EventContext<'a, T> {
-    pub fn new(
-        ctx: &'a Context,
-        delivery: &'a amqp::lapin::message::Delivery,
-        event: &'a amqp::Event<T>,
-    ) -> Self {
-        Self {
-            ctx,
-            delivery,
-            event,
-        }
+    pub fn new(ctx: &'a Context, delivery: &'a amqp::lapin::message::Delivery, event: &'a amqp::Event<T>) -> Self {
+        Self { ctx, delivery, event }
     }
 
     pub fn event(&self) -> &amqp::Event<T> {
@@ -69,10 +60,7 @@ impl<'a, T> EventContext<'a, T> {
     }
 
     pub async fn ack(&self) -> Result<(), amqp::AMQPError> {
-        Ok(self
-            .delivery
-            .ack(amqp::lapin::options::BasicAckOptions::default())
-            .await?)
+        Ok(self.delivery.ack(amqp::lapin::options::BasicAckOptions::default()).await?)
     }
 
     pub async fn nack(&self) -> Result<(), amqp::AMQPError> {

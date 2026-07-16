@@ -5,15 +5,11 @@ use crate::{reflect_meta, reflect_visibility};
 pub fn attr(meta: proc_macro2::TokenStream, item: &mut syn::ItemMod) -> proc_macro2::TokenStream {
     if item.content.is_some() {
         let value = build(meta, item);
-        item.content
-            .as_mut()
-            .unwrap()
-            .1
-            .push(syn::Item::Verbatim(quote! {
-                pub fn type_of() -> ::reflect::Type {
-                    return #value;
-                }
-            }));
+        item.content.as_mut().unwrap().1.push(syn::Item::Verbatim(quote! {
+            pub fn type_of() -> ::reflect::Type {
+                return #value;
+            }
+        }));
     }
 
     quote!(#item)

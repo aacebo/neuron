@@ -1,4 +1,5 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::{AMQPError, Key, SocketConsumer, SocketProducer};
 
@@ -77,8 +78,7 @@ impl SocketOptions {
     }
 
     pub async fn connect(self) -> Result<Socket, AMQPError> {
-        let conn =
-            lapin::Connection::connect(&self.uri, lapin::ConnectionProperties::default()).await?;
+        let conn = lapin::Connection::connect(&self.uri, lapin::ConnectionProperties::default()).await?;
         let channel = conn.create_channel().await?;
         let mut queues = HashMap::new();
 

@@ -22,10 +22,7 @@ pub fn should_reflect_trait() {
     assert_eq!(ty.to_trait().meta().get("a").unwrap(), &value_of!("b"));
     assert_eq!(ty.to_trait().generics().len(), 1);
     assert_eq!(ty.to_trait().generics()[0].to_type().name(), "T");
-    assert_eq!(
-        ty.to_trait().generics()[0].to_type().default().unwrap(),
-        &type_of!(String)
-    );
+    assert_eq!(ty.to_trait().generics()[0].to_type().default().unwrap(), &type_of!(String));
 }
 
 #[reflect]

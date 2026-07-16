@@ -60,10 +60,7 @@ impl<'a> Routine for Pipeline<'a> {
         "pipeline"
     }
 
-    fn invoke(
-        &self,
-        input: crate::CortexInput<'_>,
-    ) -> Result<crate::CortexOutput, crate::CortexError> {
+    fn invoke(&self, input: crate::CortexInput<'_>) -> Result<crate::CortexOutput, crate::CortexError> {
         let mut output = CortexOutput::default();
 
         for routine in self.routines() {

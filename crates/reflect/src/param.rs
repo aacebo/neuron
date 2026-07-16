@@ -14,11 +14,7 @@ impl Param {
     }
 
     pub fn is_selfish(&self) -> bool {
-        self.name == "self"
-            && (self.ty.is_self()
-                || self.ty.is_mut_self()
-                || self.ty.is_ref_self()
-                || self.ty.is_ref_mut_self())
+        self.name == "self" && (self.ty.is_self() || self.ty.is_mut_self() || self.ty.is_ref_self() || self.ty.is_ref_mut_self())
     }
 
     pub fn name(&self) -> &str {

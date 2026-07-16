@@ -20,9 +20,7 @@ impl<TBody> Event<TBody> {
 }
 
 impl Event<String> {
-    pub fn cast<'a, TBody: serde::Deserialize<'a>>(
-        &'a self,
-    ) -> Result<Event<TBody>, serde_json::Error> {
+    pub fn cast<'a, TBody: serde::Deserialize<'a>>(&'a self) -> Result<Event<TBody>, serde_json::Error> {
         let body = serde_json::from_str::<TBody>(&self.body)?;
 
         Ok(Event {

@@ -22,9 +22,7 @@ impl<'a> KeywordExtraction<'a> {
         let byte_offset = byte_offset as usize;
         let byte_offset = byte_offset.min(text.len());
 
-        text.char_indices()
-            .take_while(|(index, _)| *index < byte_offset)
-            .count() as u32
+        text.char_indices().take_while(|(index, _)| *index < byte_offset).count() as u32
     }
 }
 

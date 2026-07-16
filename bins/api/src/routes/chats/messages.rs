@@ -1,5 +1,4 @@
-use actix_web::Error;
-use actix_web::{HttpResponse, post};
+use actix_web::{Error, HttpResponse, post};
 use amqp::{Action, Event, Key};
 use storage::types::Message;
 
@@ -11,10 +10,7 @@ struct CreateMessage {
 }
 
 #[post("/chats/{chat}/messages")]
-pub async fn create(
-    ctx: RequestContext,
-    body: actix_web::web::Json<CreateMessage>,
-) -> Result<HttpResponse, Error> {
+pub async fn create(ctx: RequestContext, body: actix_web::web::Json<CreateMessage>) -> Result<HttpResponse, Error> {
     let mut message = Message::new(&body.text);
 
     message = ctx
@@ -26,10 +22,7 @@ pub async fn create(
 
     ctx.amqp()
         .produce()
-        .enqueue(Event::new(
-            Key::new("message", Action::Create),
-            message.clone(),
-        ))
+        .enqueue(Event::new(Key::new("message", Action::Create), message.clone()))
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
