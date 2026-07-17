@@ -22,9 +22,9 @@ impl<'a> TaskStorage<'a> {
         sqlx::query_as::<_, Task>(
             r#"
             SELECT tasks.*
-            FROM messages_jobs
+            FROM messages_tasks
             LEFT JOIN tasks
-                ON tasks.id = messages_jobs.job_id
+                ON tasks.id = messages_tasks.task_id
             WHERE message_id = $1
             ORDER BY created_at DESC
             "#,
@@ -68,9 +68,9 @@ impl<'a> TaskStorage<'a> {
         if let JobSource::Message(message_id) = source {
             sqlx::query(
                 r#"
-                INSERT INTO messages_jobs (
+                INSERT INTO messages_tasks (
                     message_id,
-                    job_id,
+                    task_id,
                     created_at
                 )
                 VALUES ($1, $2, NOW())

@@ -12,7 +12,7 @@ use crate::views::MessageView;
 pub async fn get_events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> HttpResponse {
     let id = path.into_inner();
     let pool = ctx.pool().clone();
-    let s = stream::unfold((false, None::<Vec<(uuid::Uuid, TaskStatus)>>), move |(done, last_jobs)| {
+    let s = stream::unfold((false, None::<Vec<(uuid::Uuid, TaskStatus)>>), move |(done, last_tasks)| {
         let pool = pool.clone();
         async move {
             if done {
@@ -29,10 +29,10 @@ pub async fn get_events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> Htt
                     Err(_) => continue,
                 };
 
-                let current_jobs = view.tasks.iter().map(|task| (task.id, task.status)).collect::<Vec<_>>();
+                let current_tasks = view.tasks.iter().map(|task| (task.id, task.status)).collect::<Vec<_>>();
 
                 // only emit when task state changes
-                if last_jobs.as_ref() == Some(&current_jobs) {
+                if last_tasks.as_ref() == Some(&current_tasks) {
                     continue;
                 }
 
@@ -49,7 +49,7 @@ pub async fn get_events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> Htt
 
                 return Some((
                     Ok::<Bytes, actix_web::Error>(Bytes::from(frame)),
-                    (is_terminal, Some(current_jobs)),
+                    (is_terminal, Some(current_tasks)),
                 ));
             }
         }

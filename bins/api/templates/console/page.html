@@ -189,7 +189,7 @@
         <!-- Metadata footer -->
         <div class="border-t border-gray-800 pt-4 flex flex-wrap gap-6 text-xs text-gray-600 font-mono">
             <span>id: <span x-text="result ? result.id : ''"></span></span>
-            <span x-show="jobStatus(result)">status: <span x-text="jobStatus(result)"></span></span>
+            <span x-show="taskStatus(result)">status: <span x-text="taskStatus(result)"></span></span>
             <span>source: <span x-text="result ? result.source : ''"></span></span>
             <span>created: <span x-text="result ? result.created_at : ''"></span></span>
         </div>
@@ -288,7 +288,7 @@ document.addEventListener('alpine:init', () => {
             this.result = result;
             this.text = result.text ?? '';
 
-            const status = this.jobStatus(result);
+            const status = this.taskStatus(result);
 
             if (status === 'failure') {
                 this.error = this.formatJobFailure(this.latestJob(result)?.error);
@@ -320,7 +320,7 @@ document.addEventListener('alpine:init', () => {
             return result?.tasks?.[0] ?? null;
         },
 
-        jobStatus(result = this.result) {
+        taskStatus(result = this.result) {
             return this.latestJob(result)?.status ?? null;
         },
 
@@ -348,7 +348,7 @@ document.addEventListener('alpine:init', () => {
 
         get showElapsed() {
             return this.result
-                && this.isTerminalStatus(this.jobStatus(this.result))
+                && this.isTerminalStatus(this.taskStatus(this.result))
                 && Number.isFinite(this.elapsedMs);
         },
 

@@ -11,16 +11,16 @@ impl<'a> MessageStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get_by_job(&self, job_id: uuid::Uuid) -> Result<Vec<Message>, sqlx::Error> {
+    pub async fn get_by_task(&self, task_id: uuid::Uuid) -> Result<Vec<Message>, sqlx::Error> {
         sqlx::query_as::<_, Message>(
             r#"
             SELECT messages.*
-            FROM messages_jobs
-            LEFT JOIN messages ON messages.id = messages_jobs.message_id
-            WHERE messages_jobs.job_id = $1
+            FROM messages_tasks
+            LEFT JOIN messages ON messages.id = messages_tasks.message_id
+            WHERE messages_tasks.task_id = $1
             "#,
         )
-        .bind(job_id)
+        .bind(task_id)
         .fetch_all(self.pool)
         .await
     }

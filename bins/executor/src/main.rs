@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ctx = Context::new(&pool, &socket);
     let mut message_consumer = socket.consume(amqp::Key::new("message", amqp::Action::Create)).await?;
-    let mut job_consumer = socket.consume(amqp::Key::new("task", amqp::Action::Create)).await?;
+    let mut task_consumer = socket.consume(amqp::Key::new("task", amqp::Action::Create)).await?;
     let mut log_consumer = socket.consume(amqp::Key::new("log", amqp::Action::Create)).await?;
 
     println!("waiting for events...");
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok::<_, Box<dyn std::error::Error>>(())
         },
         async {
-            while let Some(res) = job_consumer.dequeue::<storage::types::Task>().await {
+            while let Some(res) = task_consumer.dequeue::<storage::types::Task>().await {
                 let (delivery, event) = res?;
                 events::task::on_attempt(EventContext::new(&ctx, &delivery, &event)).await?;
             }

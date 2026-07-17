@@ -24,7 +24,7 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Task>) -> BoxResult<()> {
     let task = task.start();
     storage.tasks().update(&task).await?;
 
-    let messages = storage.messages().get_by_job(task.id).await?;
+    let messages = storage.messages().get_by_task(task.id).await?;
     let text = messages.first().map(|m| m.text.clone()).unwrap_or_default();
     let output = tokio::task::block_in_place(|| {
         let text = vec![text.clone()];
