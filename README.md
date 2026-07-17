@@ -1,302 +1,482 @@
-# Neuron: Distributed Neural Network System
-
-## Overview
-
-This project is a **network of neural networks**: a distributed AI system composed of many independent model nodes, each running a specialized neural network and communicating with other nodes over a network.
-
-The system is not limited to large language models. Nodes may run smaller, cheaper, and more specialized models such as BERT-style classifiers, embedding models, rerankers, summarizers, GPT-2-scale generators, task-specific transformers, or other neural architectures.
-
-The purpose of the project is to build a more efficient alternative to relying on a single large frontier model for every task. Instead of sending all work to expensive general-purpose models like Claude Opus or GPT-5-class systems, the network decomposes work across smaller specialized models that are cheaper to run, faster to execute, and easier to scale.
-
-The larger intelligence emerges from **coordination**, **specialization**, **memory**, and **routing**, not from a single massive model doing everything.
-
----
-
-# Vision
-
-The vision is to create a **cost-efficient, high-performance distributed intelligence platform**.
-
-Today’s frontier LLM offerings are powerful, but they are expensive, resource-intensive, and often overkill for many subtasks. A large model may be used to classify intent, extract entities, summarize short text, generate embeddings, validate structure, route a request, or perform simple reasoning even when a smaller model could do the job faster and cheaper.
-
-This project challenges that default approach.
-
-Instead of treating a large model as the center of intelligence, the system treats intelligence as a **networked composition of smaller neural systems**. Each node performs the work it is best suited for, and the network coordinates those outputs into a higher-level result.
-
-The goal is to achieve comparable or superior practical outcomes with lower cost, better latency, better resource utilization, and more control over the execution pipeline.
-
----
-
-# Core Idea
-
-The system is a **neural network of neural networks**.
-
-Each node in the network may be a different kind of model:
-
-* classifier
-* embedding model
-* reranker
-* summarizer
-* named-entity recognizer
-* sentiment model
-* small generative model
-* GPT-2-scale language model
-* BERT-style encoder
-* domain-specific transformer
-* multimodal model
-* planner
-* verifier
-* routing model
-* tool-selection model
-* compression model
-* anomaly detector
-
-Each node is independently deployable and communicates with other nodes over the network.
-
-The network uses these nodes as specialized cognitive units. A task can be broken down, routed to the appropriate models, checked by other models, enriched with memory, and synthesized into a result.
-
-The system is designed so that a large expensive model is not the default tool. It becomes just one possible node in the network, used only when the task actually requires it.
-
----
-
-# Project Goals
-
-## 1. Reduce inference cost
-
-The primary goal is to reduce the cost of AI workloads by avoiding unnecessary use of large frontier models.
-
-Many tasks do not require a large model. Classification, extraction, ranking, embedding, filtering, validation, tagging, and lightweight summarization can often be handled by smaller models.
-
-The network should route work to the cheapest model that can satisfy the task with sufficient quality.
-
----
-
-## 2. Improve performance
-
-The system should improve practical performance by using smaller specialized models where possible.
-
-Expected performance advantages include:
-
-* lower latency for simple tasks
-* better throughput under load
-* parallel task execution
-* reduced GPU/CPU waste
-* less dependence on large model context windows
-* better cacheability
-* more predictable resource usage
-
-The system should be able to run many small model nodes concurrently rather than serializing all intelligence through one expensive model call.
-
----
-
-## 3. Use large models selectively
-
-Large LLMs are not rejected, but they should not be the default execution path.
-
-The system should use large models only when needed, such as for:
-
-* complex synthesis
-* ambiguous reasoning
-* open-ended generation
-* difficult planning
-* tasks where smaller models fail confidence thresholds
-* final answer composition when required
-
-This makes frontier-class LLMs an escalation path, not the foundation of the architecture.
-
----
-
-## 4. Support model specialization
-
-The network should allow many specialized neural networks to cooperate.
-
-Specialized nodes can be optimized for:
-
-* cost
-* latency
-* accuracy
-* domain
-* modality
-* task type
-* hardware target
-* memory usage
-* context size
-
-This allows the system to become more efficient as new specialized models are added.
-
----
-
-## 5. Build intelligence through coordination
-
-The system’s intelligence should come from coordination between model nodes.
-
-A task may involve:
-
-1. routing
-2. classification
-3. entity extraction
-4. memory retrieval
-5. summarization
-6. verification
-7. ranking
-8. synthesis
-9. confidence scoring
-10. memory update
-
-Each step can be assigned to the most appropriate model rather than one general model doing all work.
-
----
-
-## 6. Preserve local and production workflows
-
-The system should work both locally and in production.
-
-In local development, a developer should be able to run a small model network on a laptop using lightweight models.
-
-In production, the same architecture should scale across many nodes, machines, and hardware profiles.
-
-The core design should support:
-
-* local CPU execution
-* local GPU execution
-* remote model nodes
-* horizontal scaling
-* heterogeneous hardware
-* mixed model sizes
-* distributed deployment
-
----
-
-## 7. Make memory central to the system
-
-The network should use a dedicated memory system to avoid recomputing knowledge and repeatedly invoking expensive models.
-
-Memory should capture:
-
-* prior requests
-* intermediate results
-* embeddings
-* summaries
-* extracted entities
-* classifications
-* model outputs
-* confidence scores
-* successful routing paths
-* failed routing paths
-* reusable procedures
-* long-term learned knowledge
-
-The memory system is a key part of the cost-saving strategy. If the network has already computed, summarized, embedded, or validated something, it should be able to reuse that work.
-
----
-
-## 8. Make model routing intelligent
-
-The network needs intelligent routing.
-
-Routing should determine:
-
-* which model should handle a task
-* whether multiple models should run in parallel
-* whether a cheap model is sufficient
-* whether a result needs verification
-* whether to escalate to a larger model
-* whether memory already contains the answer
-* whether the task should be decomposed
-
-The routing layer is one of the most important parts of the product. It is what allows the system to trade off cost, latency, and quality.
-
----
-
-# Product Concept
-
-This project is a **distributed neural computation platform**.
-
-It provides the infrastructure for many neural networks to work together as one larger intelligent system.
-
-The major components are:
-
-| Component            | Purpose                                            |
-| -------------------- | -------------------------------------------------- |
-| Model Nodes          | Run individual neural networks                     |
-| Routing Layer        | Chooses which models should handle which tasks     |
-| Memory Database      | Stores short-term and long-term reusable knowledge |
-| Communication Fabric | Allows nodes to communicate over the network       |
-| Task Runtime         | Tracks task decomposition and execution            |
-| Evaluation Layer     | Scores confidence, correctness, and quality        |
-| Escalation Layer     | Determines when larger models are needed           |
-| Observability Layer  | Shows cost, latency, routing, and model behavior   |
-| Local Runtime        | Runs the system on one machine for development     |
-| Production Runtime   | Runs the system across distributed infrastructure  |
-
----
-
-# How the Network Works
-
-A task enters the system.
-
-The system first determines whether the task can be answered from memory. If not, it routes the task to one or more appropriate neural nodes.
-
-A simple request may only require a classifier or small encoder model. A more complex request may involve several models working together. A difficult request may eventually escalate to a larger generative model.
-
-The system then combines the results, verifies quality, stores useful outputs back into memory, and returns the final result.
-
-The loop is:
-
-```text
-input
-  -> check memory
-  -> classify task
-  -> route to cheapest capable model/node
-  -> run specialized computation
-  -> verify confidence
-  -> escalate only if needed
-  -> synthesize result
-  -> store reusable memory
-  -> return output
+# Agent Gateway
+
+A semantic gateway, router, and message broker for AI agents.
+
+Agent Gateway accepts requests from clients, identifies the most appropriate registered agent based on message content and agent capabilities, forwards the request, and streams progress and results back to the client using Server-Sent Events.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Client["Client"]
+    Gateway["Agent Gateway"]
+    Router{"Semantic Router"}
+    Registry[("Agent Registry")]
+    Agent["Selected Agent"]
+    NoRoute["No Suitable Agent"]
+
+    Client -->|POST message| Gateway
+    Gateway --> Router
+    Router <--> Registry
+    Router -->|Match found| Agent
+    Router -->|No match| NoRoute
+
+    Agent -->|Progress and result events| Gateway
+    Gateway -.->|SSE event stream| Client
+
+    style Client fill:#f8fafc,stroke:#475569,color:#111827,stroke-width:2px
+    style Gateway fill:#dbeafe,stroke:#2563eb,color:#111827,stroke-width:2px
+    style Router fill:#ede9fe,stroke:#7c3aed,color:#111827,stroke-width:2px
+    style Registry fill:#dcfce7,stroke:#16a34a,color:#111827,stroke-width:2px
+    style Agent fill:#fef3c7,stroke:#d97706,color:#111827,stroke-width:2px
+    style NoRoute fill:#fee2e2,stroke:#dc2626,color:#111827,stroke-width:2px
 ```
 
----
+## How It Works
 
-# Design Philosophy
+1. A client submits a message to the gateway.
+2. The gateway validates the request and passes it to the semantic router.
+3. The router queries the agent registry for eligible agents.
+4. Registered agents are ranked based on their capabilities and the message content.
+5. The gateway forwards the request to the highest-ranked suitable agent.
+6. The agent publishes progress and result events to the gateway.
+7. The gateway streams those events to the client over SSE.
+8. When no suitable agent exists, the gateway returns a no-route result.
 
-## Smaller models first
+## Features
 
-Use the smallest, cheapest model that can satisfy the task.
+- Semantic agent discovery
+- Capability-based routing
+- Explicit no-route decisions
+- Agent registration and health tracking
+- Task and chat correlation
+- Server-Sent Events for client streaming
+- Progress, result, failure, and cancellation events
+- Durable message and task state
+- Retry and failure handling
+- Tenant-aware authorization and routing policies
+- Support for synchronous and asynchronous agents
 
-## Large models as escalation
+## Core Components
 
-Use frontier-scale models only when smaller models are insufficient.
+### Agent Gateway
 
-## Distributed by design
+The Agent Gateway is the public entry point for clients and agents.
 
-The system should assume many model nodes, not one central model.
+It is responsible for:
 
-## Performance-oriented
+- Authentication and authorization
+- Message validation
+- Task creation and persistence
+- Routing orchestration
+- Agent dispatch
+- SSE connection management
+- Event forwarding
+- Cancellation
+- Retry and failure handling
 
-The architecture should optimize latency, throughput, resource utilization, and cost.
+### Semantic Router
 
-## Memory-native
+The Semantic Router selects the agent best suited to handle a request.
 
-Reusable knowledge should be stored and retrieved instead of recomputed.
+Routing considers:
 
-## Observable
+- Message content
+- Agent descriptions
+- Registered skills
+- Supported input and output types
+- Input schema compatibility
+- Required permissions
+- Tenant boundaries
+- Agent health
+- Agent availability
+- Current agent load
+- Historical execution performance
+- Semantic similarity
 
-The system should expose which models ran, how much they cost, how long they took, and why they were selected.
+The router can return a no-route decision when no registered agent satisfies the request.
 
-## Heterogeneous
+### Agent Registry
 
-The network should support different model architectures, sizes, runtimes, and hardware targets.
+The Agent Registry is the directory of agents available to the gateway.
 
-## Composable
+Each registration describes the agent, its capabilities, and how the gateway communicates with it.
 
-New neural nodes should be easy to add without redesigning the system.
+```json
+{
+  "id": "agent_calendar",
+  "name": "Calendar Agent",
+  "description": "Manages calendars, availability, and meeting scheduling.",
+  "skills": [
+    {
+      "name": "check_availability",
+      "description": "Finds available time slots across one or more calendars."
+    },
+    {
+      "name": "schedule_meeting",
+      "description": "Creates calendar events for selected participants."
+    }
+  ],
+  "transport": {
+    "type": "http",
+    "endpoint": "https://agent.example.com/tasks"
+  },
+  "status": "online"
+}
+```
 
----
+Agent registrations contain:
 
-# Final Product Statement
+- Agent identity
+- Name and description
+- Skills and capabilities
+- Example requests
+- Supported modalities
+- Input and output schemas
+- Transport configuration
+- Agent endpoint or active connection
+- Health and availability
+- Authentication metadata
+- Tenant and policy metadata
+- Semantic skill embeddings
 
-This project is a **distributed neural network system** designed to reduce the cost and improve the performance of AI workloads.
+### Selected Agent
 
-Instead of relying on a single large frontier LLM for every task, the system coordinates many smaller and specialized neural networks over a network. These models collaborate through routing, memory, task decomposition, verification, and selective escalation.
+The selected agent receives and executes a task.
 
-The goal is to deliver useful intelligence with lower cost, lower latency, better resource utilization, and more architectural control than today’s monolithic LLM offerings.
+```json
+{
+  "task_id": "task_01J...",
+  "correlation_id": "corr_01J...",
+  "chat_id": "chat_01J...",
+  "payload": {
+    "message": "Schedule a meeting with Alice tomorrow afternoon."
+  }
+}
+```
+
+Agents publish lifecycle events while processing a task:
+
+- `accepted`
+- `started`
+- `progress`
+- `message`
+- `completed`
+- `failed`
+- `cancelled`
+
+## Client API
+
+### Submit a Message
+
+```http
+POST /messages
+Content-Type: application/json
+```
+
+```json
+{
+  "message": "Find an available time for my team tomorrow.",
+  "chat_id": "chat_01J..."
+}
+```
+
+Response:
+
+```json
+{
+  "task_id": "task_01J...",
+  "chat_id": "chat_01J...",
+  "status": "routing"
+}
+```
+
+### Stream Task Events
+
+```http
+GET /tasks/task_01J.../events
+Accept: text/event-stream
+```
+
+Example stream:
+
+```text
+event: routed
+data: {"task_id":"task_01J...","agent_id":"agent_calendar"}
+
+event: progress
+data: {"task_id":"task_01J...","message":"Checking attendee availability"}
+
+event: completed
+data: {"task_id":"task_01J...","result":{"start":"2026-07-20T15:00:00-04:00"}}
+```
+
+SSE provides the gateway-to-client event stream. Client commands are sent through HTTP endpoints.
+
+### Get Task State
+
+```http
+GET /tasks/{task_id}
+```
+
+### Cancel a Task
+
+```http
+POST /tasks/{task_id}/cancel
+```
+
+## Agent API
+
+### Register an Agent
+
+```http
+POST /agents
+Content-Type: application/json
+```
+
+```json
+{
+  "id": "agent_calendar",
+  "name": "Calendar Agent",
+  "description": "Manages calendars, availability, and meeting scheduling.",
+  "skills": [
+    {
+      "name": "check_availability",
+      "description": "Finds available time slots."
+    },
+    {
+      "name": "schedule_meeting",
+      "description": "Creates calendar events."
+    }
+  ],
+  "transport": {
+    "type": "http",
+    "endpoint": "https://agent.example.com/tasks"
+  }
+}
+```
+
+### Receive a Task
+
+The gateway dispatches selected tasks to the agent:
+
+```http
+POST /agents/{agent_id}/tasks
+Content-Type: application/json
+```
+
+### Publish a Task Event
+
+```http
+POST /tasks/{task_id}/events
+Content-Type: application/json
+```
+
+```json
+{
+  "type": "progress",
+  "payload": {
+    "message": "Searching available time slots"
+  }
+}
+```
+
+### Report Agent Health
+
+```http
+POST /agents/{agent_id}/heartbeat
+Content-Type: application/json
+```
+
+```json
+{
+  "status": "online",
+  "active_tasks": 3
+}
+```
+
+## Routing
+
+Routing is performed as a multi-stage pipeline:
+
+```text
+Message
+  -> eligibility filtering
+  -> candidate retrieval
+  -> semantic ranking
+  -> policy evaluation
+  -> agent selection
+```
+
+### Eligibility Filtering
+
+Agents are removed from consideration when they fail hard requirements such as:
+
+- Input schema compatibility
+- Required permissions
+- Tenant access
+- Supported modality
+- Agent health
+- Agent availability
+- Routing policy
+
+### Candidate Retrieval
+
+Eligible agents are retrieved using their registered descriptions, skills, tags, examples, and semantic embeddings.
+
+### Ranking
+
+Candidates are ranked using a combination of:
+
+- Semantic similarity
+- Skill relevance
+- Schema compatibility
+- Agent availability
+- Current load
+- Historical success
+- Routing policy
+
+### No-Route Decisions
+
+The router returns a no-route result when no agent meets the configured eligibility or confidence requirements.
+
+```json
+{
+  "task_id": "task_01J...",
+  "status": "unroutable",
+  "reason": "No registered agent supports the requested capability."
+}
+```
+
+## Chat Routing
+
+A chat can remain associated with its selected agent:
+
+```text
+chat_id -> agent_id
+```
+
+Subsequent messages are routed to the existing agent while the binding remains valid.
+
+The gateway can reevaluate the chat binding when:
+
+- The agent becomes unavailable
+- The requested capability changes
+- The client requests rerouting
+- A routing policy requires reevaluation
+- The agent delegates the task
+
+## Message Delivery
+
+The gateway remains between the client and the selected agent.
+
+Clients do not require direct network access to agents, and agents do not require direct access to clients.
+
+This allows the gateway to enforce:
+
+- Authentication
+- Authorization
+- Auditing
+- Rate limits
+- Retry policies
+- Cancellation
+- Agent failover
+- Tenant isolation
+- Event persistence
+- Chat affinity
+
+## Task Model
+
+Tasks have a stable identity and lifecycle.
+
+```json
+{
+  "id": "task_01J...",
+  "correlation_id": "corr_01J...",
+  "chat_id": "chat_01J...",
+  "client_id": "client_01J...",
+  "agent_id": "agent_calendar",
+  "status": "running",
+  "created_at": "2026-07-17T14:00:00Z",
+  "updated_at": "2026-07-17T14:00:03Z"
+}
+```
+
+Task states include:
+
+```text
+pending
+routing
+dispatched
+accepted
+running
+completed
+failed
+cancelled
+unroutable
+```
+
+## Event Model
+
+Every task event includes its task identity, event type, timestamp, and payload.
+
+```json
+{
+  "id": "event_01J...",
+  "task_id": "task_01J...",
+  "type": "progress",
+  "timestamp": "2026-07-17T14:00:03Z",
+  "payload": {
+    "message": "Checking attendee availability"
+  }
+}
+```
+
+Events are persisted before being streamed to connected clients, allowing clients to reconnect without losing task progress.
+
+## API Overview
+
+### Agents
+
+```http
+POST   /agents
+GET    /agents
+GET    /agents/{agent_id}
+PUT    /agents/{agent_id}
+DELETE /agents/{agent_id}
+POST   /agents/{agent_id}/heartbeat
+POST   /agents/{agent_id}/tasks
+```
+
+### Messages and Tasks
+
+```http
+POST   /messages
+GET    /tasks/{task_id}
+GET    /tasks/{task_id}/events
+POST   /tasks/{task_id}/events
+POST   /tasks/{task_id}/cancel
+```
+
+### Routing
+
+```http
+POST /routes/evaluate
+```
+
+The route evaluation endpoint returns a routing decision without dispatching the task.
+
+```json
+{
+  "agent_id": "agent_calendar",
+  "confidence": 0.94,
+  "matched_skills": [
+    "check_availability",
+    "schedule_meeting"
+  ]
+}
+```
+
+## License
+
+Licensed under the terms provided in [LICENSE](LICENSE).

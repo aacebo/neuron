@@ -20,6 +20,7 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> BoxResult<()> {
         return Ok(());
     }
 
+    ctx.trace("job.start").await?;
     let job = job.start();
     storage.jobs().update(&job).await?;
 
@@ -137,10 +138,12 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> BoxResult<()> {
 
     match persist_result {
         Ok(()) => {
+            ctx.trace("job.success").await?;
             storage.jobs().update(&job.success()).await?;
             ctx.ack().await?;
         }
         Err(e) => {
+            ctx.error("job.fail", job.id.to_string()).await?;
             let job = job.clone().fail(e.to_string());
             storage.jobs().update(&job).await?;
 

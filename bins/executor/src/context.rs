@@ -94,10 +94,10 @@ impl<'a, T> EventContext<'a, T> {
         .await
     }
 
-    pub async fn error(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
+    pub async fn error(&self, message: impl std::fmt::Display, context: impl Into<sqlx::types::JsonValue>) -> Result<(), amqp::AMQPError> {
         self.enqueue(
             amqp::Key::new("log", amqp::Action::Create),
-            storage::types::Log::error(self.event.trace_id, "executor", message),
+            storage::types::Log::error(self.event.trace_id, "executor", message).with(context),
         )
         .await
     }
