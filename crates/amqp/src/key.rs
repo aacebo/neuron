@@ -14,11 +14,7 @@ impl Key {
     }
 
     pub fn exchange(&self) -> &str {
-        &self.entity
-    }
-
-    pub fn queue(&self) -> &str {
-        self.action.name()
+        "events"
     }
 }
 

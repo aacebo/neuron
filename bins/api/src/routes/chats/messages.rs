@@ -1,5 +1,5 @@
 use actix_web::{Error, HttpResponse, post};
-use amqp::{Action, Event, Key};
+use amqp::{Action, Key};
 use storage::types::Message;
 
 use crate::RequestContext;
@@ -20,9 +20,7 @@ pub async fn create(ctx: RequestContext, body: actix_web::web::Json<CreateMessag
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    ctx.amqp()
-        .produce()
-        .enqueue(Event::new(Key::new("message", Action::Create), message.clone()))
+    ctx.enqueue(Key::new("message", Action::Create), message.clone())
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 

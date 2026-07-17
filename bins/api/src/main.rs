@@ -3,13 +3,11 @@ use sqlx::postgres::PgPoolOptions;
 
 mod config;
 mod context;
-mod request_context;
 mod routes;
 mod views;
 
 pub use config::Config;
-pub use context::Context;
-pub use request_context::{RequestContext, RequestContextMiddleware};
+pub use context::*;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

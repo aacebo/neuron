@@ -37,7 +37,7 @@ impl Socket {
         let consumer = self
             .channel()
             .basic_consume(
-                key.queue(),
+                &key.to_string(),
                 &consumer_tag,
                 lapin::options::BasicConsumeOptions::default(),
                 lapin::types::FieldTable::default(),
@@ -86,23 +86,29 @@ impl SocketOptions {
             channel
                 .exchange_declare(
                     key.exchange(),
-                    lapin::ExchangeKind::Topic,
-                    lapin::options::ExchangeDeclareOptions::default(),
+                    lapin::ExchangeKind::Direct,
+                    lapin::options::ExchangeDeclareOptions {
+                        durable: true,
+                        ..Default::default()
+                    },
                     lapin::types::FieldTable::default(),
                 )
                 .await?;
 
             let queue = channel
                 .queue_declare(
-                    key.queue(),
-                    lapin::options::QueueDeclareOptions::default(),
+                    &key.to_string(),
+                    lapin::options::QueueDeclareOptions {
+                        durable: true,
+                        ..Default::default()
+                    },
                     lapin::types::FieldTable::default(),
                 )
                 .await?;
 
             channel
                 .queue_bind(
-                    key.queue(),
+                    &key.to_string(),
                     key.exchange(),
                     &key.to_string(),
                     lapin::options::QueueBindOptions::default(),

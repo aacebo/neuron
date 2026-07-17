@@ -1,4 +1,4 @@
-use amqp::{Action, Event, Key};
+use amqp::{Action, Key};
 use storage::types::{Job, JobSource};
 
 use crate::context::EventContext;
@@ -11,11 +11,9 @@ pub async fn on_create<'a>(ctx: EventContext<'a, storage::types::Message>) -> Re
         .create(&Job::new("inference"), JobSource::message(msg.id))
         .await?;
 
-    ctx.amqp()
-        .produce()
-        .enqueue(Event::new(Key::new("job", Action::Create), job))
-        .await?;
-
+    ctx.trace("message.create").await?;
+    ctx.enqueue(Key::new("job", Action::Create), job).await?;
     ctx.ack().await?;
+
     Ok(())
 }

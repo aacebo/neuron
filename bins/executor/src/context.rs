@@ -31,10 +31,6 @@ impl<'a> Context<'a> {
     pub fn pool(&self) -> &PgPool {
         self.pool
     }
-
-    pub fn amqp(&self) -> &amqp::Socket {
-        self.socket
-    }
 }
 
 #[derive(Clone)]
@@ -57,6 +53,13 @@ impl<'a, T> EventContext<'a, T> {
         Ok(self.delivery.ack(amqp::lapin::options::BasicAckOptions::default()).await?)
     }
 
+    pub async fn enqueue<V: serde::Serialize>(&self, key: impl Into<amqp::Key>, body: V) -> Result<(), amqp::AMQPError> {
+        self.socket
+            .produce()
+            .enqueue(amqp::Event::new(self.event().trace_id, key.into(), body))
+            .await
+    }
+
     pub async fn nack(&self) -> Result<(), amqp::AMQPError> {
         Ok(self
             .delivery
@@ -65,6 +68,38 @@ impl<'a, T> EventContext<'a, T> {
                 requeue: true,
             })
             .await?)
+    }
+
+    pub async fn trace(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
+        self.enqueue(
+            amqp::Key::new("log", amqp::Action::Create),
+            storage::types::Log::trace(self.event.trace_id, "executor", message),
+        )
+        .await
+    }
+
+    pub async fn info(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
+        self.enqueue(
+            amqp::Key::new("log", amqp::Action::Create),
+            storage::types::Log::info(self.event.trace_id, "executor", message),
+        )
+        .await
+    }
+
+    pub async fn warn(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
+        self.enqueue(
+            amqp::Key::new("log", amqp::Action::Create),
+            storage::types::Log::warn(self.event.trace_id, "executor", message),
+        )
+        .await
+    }
+
+    pub async fn error(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
+        self.enqueue(
+            amqp::Key::new("log", amqp::Action::Create),
+            storage::types::Log::error(self.event.trace_id, "executor", message),
+        )
+        .await
     }
 }
 
