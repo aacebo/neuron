@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::types::MessageArtifact;
+use crate::types::Artifact;
 
 pub struct ArtifactStorage<'a> {
     pool: &'a PgPool,
@@ -11,24 +11,24 @@ impl<'a> ArtifactStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<MessageArtifact>, sqlx::Error> {
-        sqlx::query_as::<_, MessageArtifact>("SELECT * FROM message_artifacts WHERE id = $1")
+    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<Artifact>, sqlx::Error> {
+        sqlx::query_as::<_, Artifact>("SELECT * FROM artifacts WHERE id = $1")
             .bind(id)
             .fetch_optional(self.pool)
             .await
     }
 
-    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<MessageArtifact>, sqlx::Error> {
-        sqlx::query_as::<_, MessageArtifact>("SELECT * FROM message_artifacts WHERE message_id = $1 ORDER BY created_at")
+    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<Artifact>, sqlx::Error> {
+        sqlx::query_as::<_, Artifact>("SELECT * FROM artifacts WHERE message_id = $1 ORDER BY created_at")
             .bind(message_id)
             .fetch_all(self.pool)
             .await
     }
 
-    pub async fn create(&self, artifact: &MessageArtifact) -> Result<MessageArtifact, sqlx::Error> {
-        sqlx::query_as::<_, MessageArtifact>(
+    pub async fn create(&self, artifact: &Artifact) -> Result<Artifact, sqlx::Error> {
+        sqlx::query_as::<_, Artifact>(
             r#"
-            INSERT INTO message_artifacts
+            INSERT INTO artifacts
                 (id, message_id, name, content, embedding, created_at)
             VALUES ($1, $2, $3, $4, $5, NOW())
             RETURNING *
@@ -43,10 +43,10 @@ impl<'a> ArtifactStorage<'a> {
         .await
     }
 
-    pub async fn update(&self, artifact: &MessageArtifact) -> Result<MessageArtifact, sqlx::Error> {
-        sqlx::query_as::<_, MessageArtifact>(
+    pub async fn update(&self, artifact: &Artifact) -> Result<Artifact, sqlx::Error> {
+        sqlx::query_as::<_, Artifact>(
             r#"
-            UPDATE message_artifacts
+            UPDATE artifacts
             SET name = $2, content = $3, embedding = $4
             WHERE id = $1
             RETURNING *
@@ -61,7 +61,7 @@ impl<'a> ArtifactStorage<'a> {
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query("DELETE FROM message_artifacts WHERE id = $1")
+        let result = sqlx::query("DELETE FROM artifacts WHERE id = $1")
             .bind(id)
             .execute(self.pool)
             .await?;

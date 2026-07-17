@@ -4,21 +4,21 @@ pub mod types;
 
 mod annotation;
 mod artifact;
-mod job;
 mod log;
 mod message;
+mod task;
 
 pub use annotation::*;
 pub use artifact::*;
-pub use job::*;
 pub use log::*;
 pub use message::*;
+pub use task::*;
 
 pub struct Storage<'a> {
     _messages: MessageStorage<'a>,
     _annotations: AnnotationStorage<'a>,
     _artifacts: ArtifactStorage<'a>,
-    _jobs: JobStorage<'a>,
+    _tasks: TaskStorage<'a>,
     _logs: LogStorage<'a>,
 }
 
@@ -28,7 +28,7 @@ impl<'a> Storage<'a> {
             _messages: MessageStorage::new(pool),
             _annotations: AnnotationStorage::new(pool),
             _artifacts: ArtifactStorage::new(pool),
-            _jobs: JobStorage::new(pool),
+            _tasks: TaskStorage::new(pool),
             _logs: LogStorage::new(pool),
         }
     }
@@ -45,8 +45,8 @@ impl<'a> Storage<'a> {
         &self._artifacts
     }
 
-    pub fn jobs(&self) -> &JobStorage<'a> {
-        &self._jobs
+    pub fn tasks(&self) -> &TaskStorage<'a> {
+        &self._tasks
     }
 
     pub fn logs(&self) -> &LogStorage<'a> {

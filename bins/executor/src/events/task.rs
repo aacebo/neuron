@@ -1,13 +1,13 @@
 use ai::{Error, Result};
-use storage::types::{ArtifactContent, Job, MessageAnnotation, MessageArtifact, Span, TextArtifact};
+use storage::types::{Annotation, Artifact, ArtifactContent, Span, Task, TextArtifact};
 
 type BoxResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 use crate::context::EventContext;
 
-pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> BoxResult<()> {
+pub async fn on_attempt<'a>(ctx: EventContext<'a, Task>) -> BoxResult<()> {
     let storage = ctx.storage();
-    let job = match storage.jobs().get(ctx.event().body.id).await? {
+    let task = match storage.tasks().get(ctx.event().body.id).await? {
         Some(j) => j,
         None => {
             ctx.ack().await?;
@@ -15,16 +15,16 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> BoxResult<()> {
         }
     };
 
-    if job.attempts >= job.max_attempts {
+    if task.attempts >= task.max_attempts {
         ctx.ack().await?;
         return Ok(());
     }
 
-    ctx.trace("job.start").await?;
-    let job = job.start();
-    storage.jobs().update(&job).await?;
+    ctx.trace("task.start").await?;
+    let task = task.start();
+    storage.tasks().update(&task).await?;
 
-    let messages = storage.messages().get_by_job(job.id).await?;
+    let messages = storage.messages().get_by_job(task.id).await?;
     let text = messages.first().map(|m| m.text.clone()).unwrap_or_default();
     let output = tokio::task::block_in_place(|| {
         let text = vec![text.clone()];
@@ -90,10 +90,10 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> BoxResult<()> {
     let (annotations, artifacts) = match output {
         Ok(o) => o,
         Err(e) => {
-            let job = job.fail(e.to_string());
-            storage.jobs().update(&job).await?;
+            let task = task.fail(e.to_string());
+            storage.tasks().update(&task).await?;
 
-            if job.attempts >= job.max_attempts {
+            if task.attempts >= task.max_attempts {
                 ctx.ack().await?;
             } else {
                 ctx.nack().await?;
@@ -109,7 +109,7 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> BoxResult<()> {
             let spans = annotation.spans.iter().map(|s| Span::new(s.begin, s.end)).collect();
             storage
                 .annotations()
-                .create(&MessageAnnotation::new(
+                .create(&Annotation::new(
                     message_id,
                     &annotation.name,
                     &annotation.label,
@@ -122,7 +122,7 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> BoxResult<()> {
 
         for artifact in artifacts {
             let Some(text) = artifact.value.as_text() else { continue };
-            let row = MessageArtifact::new(
+            let row = Artifact::new(
                 message_id,
                 artifact.name.clone(),
                 ArtifactContent::Text(TextArtifact { text: text.to_string() }),
@@ -138,16 +138,16 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Job>) -> BoxResult<()> {
 
     match persist_result {
         Ok(()) => {
-            ctx.trace("job.success").await?;
-            storage.jobs().update(&job.success()).await?;
+            ctx.trace("task.success").await?;
+            storage.tasks().update(&task.success()).await?;
             ctx.ack().await?;
         }
         Err(e) => {
-            ctx.error("job.fail", job.id.to_string()).await?;
-            let job = job.clone().fail(e.to_string());
-            storage.jobs().update(&job).await?;
+            ctx.error("task.fail", task.id.to_string()).await?;
+            let task = task.clone().fail(e.to_string());
+            storage.tasks().update(&task).await?;
 
-            if job.attempts >= job.max_attempts {
+            if task.attempts >= task.max_attempts {
                 ctx.ack().await?;
             } else {
                 ctx.nack().await?;

@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, sqlx::FromRow)]
-pub struct MessageArtifact {
+pub struct Artifact {
     pub id: uuid::Uuid,
     pub message_id: uuid::Uuid,
     pub name: String,
@@ -9,7 +9,7 @@ pub struct MessageArtifact {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-impl MessageArtifact {
+impl Artifact {
     pub fn new(message_id: uuid::Uuid, name: impl Into<String>, content: ArtifactContent, embedding: Option<Vec<f32>>) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),

@@ -87,7 +87,7 @@ pub fn load(model: &ModelRef, api_key: &Option<String>) -> Result<std::sync::Arc
 
 // Each routine is the same four steps: parse args, load the model, ask it for the capability the
 // routine needs, and present the result. Asking is where the capability matrix bites -- a model
-// that cannot do the job fails here, by name, instead of part-way through inference.
+// that cannot do the task fails here, by name, instead of part-way through inference.
 
 pub fn embeddings(args: TextArgs) -> Result<Vec<Artifact>> {
     let api_key = args.model.api_key.clone();

@@ -61,7 +61,7 @@ impl Classify for SequenceClassifier {
             .into_iter()
             .map(|row| {
                 // SST-2 label order: 0 = NEGATIVE, 1 = POSITIVE. The head emits the label; reading
-                // it as a sentiment polarity is the task's job, not the model's.
+                // it as a sentiment polarity is the task's task, not the model's.
                 let (negative, positive) = (row[0], row[1]);
 
                 match positive >= negative {

@@ -1,4 +1,4 @@
-use storage::types::{Job, JobStatus, Message, MessageAnnotation, MessageArtifact, MessageSource};
+use storage::types::{Annotation, Artifact, Message, MessageSource, Task, TaskStatus};
 
 #[derive(Debug, serde::Serialize)]
 pub struct MessageView {
@@ -7,9 +7,9 @@ pub struct MessageView {
     pub source: MessageSource,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
-    pub annotations: Vec<MessageAnnotation>,
-    pub artifacts: Vec<MessageArtifact>,
-    pub jobs: Vec<Job>,
+    pub annotations: Vec<Annotation>,
+    pub artifacts: Vec<Artifact>,
+    pub tasks: Vec<Task>,
 }
 
 impl MessageView {
@@ -21,12 +21,12 @@ impl MessageView {
 
         let annotations = storage.annotations().get_by_message(id).await?;
         let artifacts = storage.artifacts().get_by_message(id).await?;
-        let jobs = storage.jobs().get_by_message(id).await?;
+        let tasks = storage.tasks().get_by_message(id).await?;
 
-        Ok(Some(Self::new(message, annotations, artifacts, jobs)))
+        Ok(Some(Self::new(message, annotations, artifacts, tasks)))
     }
 
-    pub fn new(message: Message, annotations: Vec<MessageAnnotation>, artifacts: Vec<MessageArtifact>, jobs: Vec<Job>) -> Self {
+    pub fn new(message: Message, annotations: Vec<Annotation>, artifacts: Vec<Artifact>, tasks: Vec<Task>) -> Self {
         Self {
             id: message.id,
             text: message.text,
@@ -35,11 +35,11 @@ impl MessageView {
             updated_at: message.updated_at,
             annotations,
             artifacts,
-            jobs,
+            tasks,
         }
     }
 
-    pub fn status(&self) -> Option<JobStatus> {
-        self.jobs.iter().map(|job| job.status).min_by_key(|status| *status as u8)
+    pub fn status(&self) -> Option<TaskStatus> {
+        self.tasks.iter().map(|task| task.status).min_by_key(|status| *status as u8)
     }
 }

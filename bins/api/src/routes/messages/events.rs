@@ -3,7 +3,7 @@ use std::time::Duration;
 use actix_web::{HttpResponse, get, web};
 use bytes::Bytes;
 use futures_util::stream;
-use storage::types::JobStatus;
+use storage::types::TaskStatus;
 
 use crate::RequestContext;
 use crate::views::MessageView;
@@ -12,7 +12,7 @@ use crate::views::MessageView;
 pub async fn get_events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> HttpResponse {
     let id = path.into_inner();
     let pool = ctx.pool().clone();
-    let s = stream::unfold((false, None::<Vec<(uuid::Uuid, JobStatus)>>), move |(done, last_jobs)| {
+    let s = stream::unfold((false, None::<Vec<(uuid::Uuid, TaskStatus)>>), move |(done, last_jobs)| {
         let pool = pool.clone();
         async move {
             if done {
@@ -29,16 +29,16 @@ pub async fn get_events(ctx: RequestContext, path: web::Path<uuid::Uuid>) -> Htt
                     Err(_) => continue,
                 };
 
-                let current_jobs = view.jobs.iter().map(|job| (job.id, job.status)).collect::<Vec<_>>();
+                let current_jobs = view.tasks.iter().map(|task| (task.id, task.status)).collect::<Vec<_>>();
 
-                // only emit when job state changes
+                // only emit when task state changes
                 if last_jobs.as_ref() == Some(&current_jobs) {
                     continue;
                 }
 
                 let is_terminal = matches!(
                     view.status(),
-                    Some(JobStatus::Success) | Some(JobStatus::Failure) | Some(JobStatus::Cancelled)
+                    Some(TaskStatus::Success) | Some(TaskStatus::Failure) | Some(TaskStatus::Cancelled)
                 );
 
                 let mut frame = format!("data: {}\n\n", serde_json::to_string(&view).unwrap_or_default());

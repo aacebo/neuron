@@ -1,30 +1,30 @@
 use sqlx::PgPool;
 
-use crate::types::{Job, JobSource};
+use crate::types::{JobSource, Task};
 
-pub struct JobStorage<'a> {
+pub struct TaskStorage<'a> {
     pool: &'a PgPool,
 }
 
-impl<'a> JobStorage<'a> {
+impl<'a> TaskStorage<'a> {
     pub fn new(pool: &'a PgPool) -> Self {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<Job>, sqlx::Error> {
-        sqlx::query_as::<_, Job>("SELECT * FROM jobs WHERE id = $1")
+    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<Task>, sqlx::Error> {
+        sqlx::query_as::<_, Task>("SELECT * FROM tasks WHERE id = $1")
             .bind(id)
             .fetch_optional(self.pool)
             .await
     }
 
-    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<Job>, sqlx::Error> {
-        sqlx::query_as::<_, Job>(
+    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<Task>, sqlx::Error> {
+        sqlx::query_as::<_, Task>(
             r#"
-            SELECT jobs.*
+            SELECT tasks.*
             FROM messages_jobs
-            LEFT JOIN jobs
-                ON jobs.id = messages_jobs.job_id
+            LEFT JOIN tasks
+                ON tasks.id = messages_jobs.job_id
             WHERE message_id = $1
             ORDER BY created_at DESC
             "#,
@@ -34,10 +34,10 @@ impl<'a> JobStorage<'a> {
         .await
     }
 
-    pub async fn create(&self, job: &Job, source: JobSource) -> Result<Job, sqlx::Error> {
-        let res = sqlx::query_as::<_, Job>(
+    pub async fn create(&self, task: &Task, source: JobSource) -> Result<Task, sqlx::Error> {
+        let res = sqlx::query_as::<_, Task>(
             r#"
-            INSERT INTO jobs (
+            INSERT INTO tasks (
                 id,
                 name,
                 status,
@@ -53,14 +53,14 @@ impl<'a> JobStorage<'a> {
             RETURNING *
             "#,
         )
-        .bind(job.id)
-        .bind(&job.name)
-        .bind(job.status)
-        .bind(&job.error)
-        .bind(job.attempts)
-        .bind(job.max_attempts)
-        .bind(job.started_at)
-        .bind(job.ended_at)
+        .bind(task.id)
+        .bind(&task.name)
+        .bind(task.status)
+        .bind(&task.error)
+        .bind(task.attempts)
+        .bind(task.max_attempts)
+        .bind(task.started_at)
+        .bind(task.ended_at)
         .fetch_one(self.pool)
         .await?;
 
@@ -77,7 +77,7 @@ impl<'a> JobStorage<'a> {
                 "#,
             )
             .bind(message_id)
-            .bind(job.id)
+            .bind(task.id)
             .execute(self.pool)
             .await?;
         }
@@ -85,10 +85,10 @@ impl<'a> JobStorage<'a> {
         Ok(res)
     }
 
-    pub async fn update(&self, job: &Job) -> Result<Job, sqlx::Error> {
-        sqlx::query_as::<_, Job>(
+    pub async fn update(&self, task: &Task) -> Result<Task, sqlx::Error> {
+        sqlx::query_as::<_, Task>(
             r#"
-            UPDATE jobs
+            UPDATE tasks
             SET status = $2,
                 error = $3,
                 attempts = $4,
@@ -99,18 +99,18 @@ impl<'a> JobStorage<'a> {
             RETURNING *
             "#,
         )
-        .bind(job.id)
-        .bind(job.status)
-        .bind(&job.error)
-        .bind(job.attempts)
-        .bind(job.started_at)
-        .bind(job.ended_at)
+        .bind(task.id)
+        .bind(task.status)
+        .bind(&task.error)
+        .bind(task.attempts)
+        .bind(task.started_at)
+        .bind(task.ended_at)
         .fetch_one(self.pool)
         .await
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query("DELETE FROM jobs WHERE id = $1")
+        let result = sqlx::query("DELETE FROM tasks WHERE id = $1")
             .bind(id)
             .execute(self.pool)
             .await?;

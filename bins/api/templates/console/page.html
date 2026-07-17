@@ -304,8 +304,8 @@ document.addEventListener('alpine:init', () => {
         shouldWatch(result) {
             if (!result) return false;
 
-            const jobs = result.jobs ?? [];
-            return jobs.length === 0 || this.hasIncompleteJobs(result);
+            const tasks = result.tasks ?? [];
+            return tasks.length === 0 || this.hasIncompleteJobs(result);
         },
 
         isTerminalStatus(status) {
@@ -313,11 +313,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         hasIncompleteJobs(result = this.result) {
-            return (result?.jobs ?? []).some(job => !this.isTerminalStatus(job.status));
+            return (result?.tasks ?? []).some(task => !this.isTerminalStatus(task.status));
         },
 
         latestJob(result = this.result) {
-            return result?.jobs?.[0] ?? null;
+            return result?.tasks?.[0] ?? null;
         },
 
         jobStatus(result = this.result) {
@@ -325,10 +325,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         elapsedMsFor(result = this.result) {
-            const job = this.latestJob(result);
-            if (!job?.started_at || !job?.ended_at) return null;
+            const task = this.latestJob(result);
+            if (!task?.started_at || !task?.ended_at) return null;
 
-            const ms = Date.parse(job.ended_at) - Date.parse(job.started_at);
+            const ms = Date.parse(task.ended_at) - Date.parse(task.started_at);
             return Number.isFinite(ms) ? Math.max(0, ms) : null;
         },
 

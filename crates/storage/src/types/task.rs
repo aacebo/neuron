@@ -1,8 +1,8 @@
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize, sqlx::FromRow)]
-pub struct Job {
+pub struct Task {
     pub id: uuid::Uuid,
     pub name: String,
-    pub status: JobStatus,
+    pub status: TaskStatus,
     pub error: Option<sqlx::types::JsonValue>,
     pub attempts: i32,
     pub max_attempts: i32,
@@ -12,7 +12,7 @@ pub struct Job {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-impl Job {
+impl Task {
     pub fn new(name: impl Into<String>) -> Self {
         let now = chrono::Utc::now();
 
@@ -27,10 +27,10 @@ impl Job {
     }
 
     pub fn start(mut self) -> Self {
-        assert!(self.status != JobStatus::Running);
+        assert!(self.status != TaskStatus::Running);
         let now = chrono::Utc::now();
 
-        self.status = JobStatus::Running;
+        self.status = TaskStatus::Running;
         self.attempts += 1;
         self.started_at = Some(now);
         self.error = None;
@@ -40,31 +40,31 @@ impl Job {
     }
 
     pub fn success(mut self) -> Self {
-        assert!(self.status == JobStatus::Running);
+        assert!(self.status == TaskStatus::Running);
         let now = chrono::Utc::now();
 
-        self.status = JobStatus::Success;
+        self.status = TaskStatus::Success;
         self.ended_at = Some(now);
         self.updated_at = now;
         self
     }
 
     pub fn fail(mut self, error: impl Into<sqlx::types::JsonValue>) -> Self {
-        assert!(self.status == JobStatus::Running);
+        assert!(self.status == TaskStatus::Running);
         let now = chrono::Utc::now();
 
         self.error = Some(error.into());
-        self.status = JobStatus::Failure;
+        self.status = TaskStatus::Failure;
         self.ended_at = Some(now);
         self.updated_at = now;
         self
     }
 
     pub fn cancel(mut self) -> Self {
-        assert!(self.status == JobStatus::Running);
+        assert!(self.status == TaskStatus::Running);
         let now = chrono::Utc::now();
 
-        self.status = JobStatus::Cancelled;
+        self.status = TaskStatus::Cancelled;
         self.ended_at = Some(now);
         self.updated_at = now;
         self
@@ -74,7 +74,7 @@ impl Job {
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, sqlx::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
-pub enum JobStatus {
+pub enum TaskStatus {
     #[default]
     Queued,
     Running,
@@ -83,7 +83,7 @@ pub enum JobStatus {
     Success,
 }
 
-impl std::fmt::Display for JobStatus {
+impl std::fmt::Display for TaskStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Queued => write!(f, "queued"),

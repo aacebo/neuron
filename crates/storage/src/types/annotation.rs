@@ -2,7 +2,7 @@ use crate::types::Span;
 
 /// Describes some sub span of text in a message
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, sqlx::FromRow)]
-pub struct MessageAnnotation {
+pub struct Annotation {
     pub id: uuid::Uuid,
     pub message_id: uuid::Uuid,
     pub r#type: String,
@@ -13,7 +13,7 @@ pub struct MessageAnnotation {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-impl MessageAnnotation {
+impl Annotation {
     pub fn new(
         message_id: uuid::Uuid,
         r#type: impl Into<String>,
