@@ -1,0 +1,18 @@
+[package]
+name = "types"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+doctest = false
+
+[lints]
+workspace = true
+
+[dependencies]
+url = { version = "2.5", features = ["serde"] }
+uuid = { version = "1.19", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["default", "derive"] }
+serde_json = { version = "1" }

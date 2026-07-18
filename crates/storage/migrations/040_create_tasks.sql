@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS tasks (
     id              UUID            PRIMARY KEY,
+    trace_id        UUID            NOT NULL,
     parent_id       UUID            REFERENCES tasks(id) ON DELETE CASCADE,
     chat_id         UUID            NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     message_id      UUID            REFERENCES messages(id) ON DELETE CASCADE,

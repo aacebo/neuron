@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS artifacts (
     name            TEXT                NOT NULL,
     content         JSONB               NOT NULL,
     embedding       VECTOR(384),
+    metadata        JSONB               NOT NULL DEFAULT '{}',
     created_by_id   UUID                REFERENCES actors(id) ON DELETE CASCADE,
     created_at      TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ         NOT NULL DEFAULT NOW()

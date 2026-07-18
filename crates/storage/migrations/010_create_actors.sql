@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS actors (
     role            TEXT        NOT NULL, -- user, agent
     name            TEXT        NOT NULL, -- user_name
     display_name    TEXT        NOT NULL, -- User Name
+    metadata        JSONB       NOT NULL DEFAULT '{}',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 

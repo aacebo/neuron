@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS messages (
     id              UUID        PRIMARY KEY,
     chat_id         UUID        NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     content         JSONB       NOT NULL,
+    metadata        JSONB       NOT NULL DEFAULT '{}',
     created_by_id   UUID        NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
