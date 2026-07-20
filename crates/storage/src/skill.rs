@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::projection;
+use crate::project;
 
 pub struct SkillStorage<'a> {
     pool: &'a PgPool,
@@ -13,7 +13,7 @@ impl<'a> SkillStorage<'a> {
     }
 
     pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::skills::Skill>, sqlx::Error> {
-        let query = format!("SELECT {} FROM skills skill WHERE skill.id = $1", projection::skill("skill"));
+        let query = format!("SELECT {} FROM skills skill WHERE skill.id = $1", project::skill("skill"));
         let skill = sqlx::query_scalar::<_, Json<types::skills::Skill>>(&query)
             .bind(id)
             .fetch_optional(self.pool)
@@ -64,7 +64,7 @@ impl<'a> SkillStorage<'a> {
     pub async fn get_version(&self, id: uuid::Uuid) -> Result<Option<types::skills::Version>, sqlx::Error> {
         let query = format!(
             "SELECT {} FROM skill_versions skill_version WHERE skill_version.id = $1",
-            projection::version("skill_version")
+            project::version("skill_version")
         );
         let version = sqlx::query_scalar::<_, Json<types::skills::Version>>(&query)
             .bind(id)
@@ -83,7 +83,7 @@ impl<'a> SkillStorage<'a> {
             ORDER BY skill_version.major DESC, skill_version.minor DESC, skill_version.patch DESC,
                      skill_version.prerelease DESC NULLS FIRST, skill_version.id
             "#,
-            projection::version("skill_version")
+            project::version("skill_version")
         );
         let versions = sqlx::query_scalar::<_, Json<types::skills::Version>>(&query)
             .bind(skill_id)

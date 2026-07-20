@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::projection;
+use crate::project;
 
 pub struct ActorStorage<'a> {
     pool: &'a PgPool,
@@ -13,7 +13,7 @@ impl<'a> ActorStorage<'a> {
     }
 
     pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::actors::Actor>, sqlx::Error> {
-        let query = format!("SELECT {} FROM actors actor WHERE actor.id = $1", projection::actor("actor"));
+        let query = format!("SELECT {} FROM actors actor WHERE actor.id = $1", project::actor("actor"));
         let actor = sqlx::query_scalar::<_, Json<types::actors::Actor>>(&query)
             .bind(id)
             .fetch_optional(self.pool)

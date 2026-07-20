@@ -6,7 +6,7 @@ mod artifact;
 mod chat;
 mod event;
 mod message;
-mod projection;
+mod project;
 mod skill;
 mod task;
 

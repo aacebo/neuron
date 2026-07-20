@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::projection;
+use crate::project;
 
 pub struct EventStorage<'a> {
     pool: &'a PgPool,
@@ -15,7 +15,7 @@ impl<'a> EventStorage<'a> {
     pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::events::Event>, sqlx::Error> {
         let query = format!(
             "SELECT {} FROM events stored_event WHERE stored_event.id = $1",
-            projection::event("stored_event")
+            project::event("stored_event")
         );
         let event = sqlx::query_scalar::<_, Json<types::events::Event>>(&query)
             .bind(id)
@@ -33,7 +33,7 @@ impl<'a> EventStorage<'a> {
             WHERE stored_event.trace_id = $1
             ORDER BY stored_event.created_at, stored_event.id
             "#,
-            projection::event("stored_event")
+            project::event("stored_event")
         );
         let events = sqlx::query_scalar::<_, Json<types::events::Event>>(&query)
             .bind(trace_id)
@@ -51,7 +51,7 @@ impl<'a> EventStorage<'a> {
             WHERE stored_event.task_id = $1
             ORDER BY stored_event.created_at, stored_event.id
             "#,
-            projection::event("stored_event")
+            project::event("stored_event")
         );
         let events = sqlx::query_scalar::<_, Json<types::events::Event>>(&query)
             .bind(task_id)

@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::projection;
+use crate::project;
 
 pub struct AnnotationStorage<'a> {
     pool: &'a PgPool,
@@ -15,7 +15,7 @@ impl<'a> AnnotationStorage<'a> {
     pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::resources::Annotation>, sqlx::Error> {
         let query = format!(
             "SELECT {} FROM annotations annotation WHERE annotation.id = $1",
-            projection::annotation("annotation")
+            project::annotation("annotation")
         );
         let annotation = sqlx::query_scalar::<_, Json<types::resources::Annotation>>(&query)
             .bind(id)
@@ -33,7 +33,7 @@ impl<'a> AnnotationStorage<'a> {
             WHERE annotation.message_id = $1
             ORDER BY annotation.score DESC, annotation.created_at, annotation.id
             "#,
-            projection::annotation("annotation")
+            project::annotation("annotation")
         );
         let annotations = sqlx::query_scalar::<_, Json<types::resources::Annotation>>(&query)
             .bind(message_id)

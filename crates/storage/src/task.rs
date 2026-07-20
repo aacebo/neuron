@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::projection;
+use crate::project;
 
 pub struct TaskStorage<'a> {
     pool: &'a PgPool,
@@ -13,7 +13,7 @@ impl<'a> TaskStorage<'a> {
     }
 
     pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::tasks::Task>, sqlx::Error> {
-        let query = format!("SELECT {} FROM tasks task WHERE task.id = $1", projection::task("task"));
+        let query = format!("SELECT {} FROM tasks task WHERE task.id = $1", project::task("task"));
         let task = sqlx::query_scalar::<_, Json<types::tasks::Task>>(&query)
             .bind(id)
             .fetch_optional(self.pool)
@@ -30,7 +30,7 @@ impl<'a> TaskStorage<'a> {
             WHERE task.message_id = $1
             ORDER BY task.created_at DESC, task.id
             "#,
-            projection::task("task")
+            project::task("task")
         );
         let tasks = sqlx::query_scalar::<_, Json<types::tasks::Task>>(&query)
             .bind(message_id)

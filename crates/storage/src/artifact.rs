@@ -2,7 +2,7 @@ use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::projection;
+use crate::project;
 
 pub struct ArtifactStorage<'a> {
     pool: &'a PgPool,
@@ -16,7 +16,7 @@ impl<'a> ArtifactStorage<'a> {
     pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::resources::Artifact>, sqlx::Error> {
         let query = format!(
             "SELECT {} FROM artifacts artifact WHERE artifact.id = $1",
-            projection::artifact("artifact")
+            project::artifact("artifact")
         );
         let artifact = sqlx::query_scalar::<_, Json<types::resources::Artifact>>(&query)
             .bind(id)
@@ -34,7 +34,7 @@ impl<'a> ArtifactStorage<'a> {
             WHERE artifact.message_id = $1
             ORDER BY artifact.created_at, artifact.id
             "#,
-            projection::artifact("artifact")
+            project::artifact("artifact")
         );
         let artifacts = sqlx::query_scalar::<_, Json<types::resources::Artifact>>(&query)
             .bind(message_id)
