@@ -27,12 +27,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .expect("Failed to connect to AMQP");
 
-    let ctx = Context::new(&pool, &socket);
+    let _ctx = Context::new(&pool, &socket);
     let mut consumer = socket.consume("*.*").await?;
 
     println!("waiting for events...");
 
-    while let Some(res) = consumer.dequeue().await {
+    while let Some(_) = consumer.dequeue().await {
         // let (delivery, event) = res?;
         // events::message::on_create(EventContext::new(&ctx, &delivery, &event)).await?;
     }
