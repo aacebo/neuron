@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS skill_versions (
     tags            TEXT[]      NOT NULL,
     input           JSONB,
     output          JSONB,
+    embedding       VECTOR(384),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 

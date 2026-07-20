@@ -26,6 +26,7 @@ pub struct Version {
     pub tags: Vec<String>,
     pub input: Option<serde_json::Value>,
     pub output: Option<serde_json::Value>,
+    pub embedding: Option<Vec<f32>>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }

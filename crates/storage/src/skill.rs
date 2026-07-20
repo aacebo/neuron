@@ -1,3 +1,4 @@
+use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
@@ -98,13 +99,14 @@ impl<'a> SkillStorage<'a> {
         skill_id: uuid::Uuid,
         version: types::skills::Version,
     ) -> Result<types::skills::Version, sqlx::Error> {
+        let embedding = version.embedding.clone().map(Vector::from);
         sqlx::query(
             r#"
             INSERT INTO skill_versions (
                 id, skill_id, major, minor, patch, prerelease, status,
-                description, tags, input, output, created_at, updated_at
+                description, tags, input, output, embedding, created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
             "#,
         )
         .bind(version.id)
@@ -118,6 +120,7 @@ impl<'a> SkillStorage<'a> {
         .bind(&version.tags)
         .bind(&version.input)
         .bind(&version.output)
+        .bind(embedding)
         .execute(self.pool)
         .await?;
 
@@ -125,6 +128,7 @@ impl<'a> SkillStorage<'a> {
     }
 
     pub async fn update_version(&self, version: types::skills::Version) -> Result<types::skills::Version, sqlx::Error> {
+        let embedding = version.embedding.clone().map(Vector::from);
         let result = sqlx::query(
             r#"
             UPDATE skill_versions
@@ -137,6 +141,7 @@ impl<'a> SkillStorage<'a> {
                 tags = $8,
                 input = $9,
                 output = $10,
+                embedding = $11,
                 updated_at = NOW()
             WHERE id = $1
             "#,
@@ -151,6 +156,7 @@ impl<'a> SkillStorage<'a> {
         .bind(&version.tags)
         .bind(&version.input)
         .bind(&version.output)
+        .bind(embedding)
         .execute(self.pool)
         .await?;
 

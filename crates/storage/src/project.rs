@@ -230,6 +230,10 @@ pub(crate) fn version(alias: &str) -> String {
             'tags', {alias}.tags,
             'input', {alias}.input,
             'output', {alias}.output,
+            'embedding', CASE
+                WHEN {alias}.embedding IS NULL THEN NULL
+                ELSE ({alias}.embedding::text)::jsonb
+            END,
             'created_at', {alias}.created_at,
             'updated_at', {alias}.updated_at
         )
