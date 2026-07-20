@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::types::Message;
+use crate::rows::Message;
 
 pub struct MessageStorage<'a> {
     pool: &'a PgPool,

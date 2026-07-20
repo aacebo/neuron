@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tokio::try_join!(
         async {
-            while let Some(res) = message_consumer.dequeue::<storage::types::Message>().await {
+            while let Some(res) = message_consumer.dequeue::<storage::rows::Message>().await {
                 let (delivery, event) = res?;
                 events::message::on_create(EventContext::new(&ctx, &delivery, &event)).await?;
             }
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok::<_, Box<dyn std::error::Error>>(())
         },
         async {
-            while let Some(res) = task_consumer.dequeue::<storage::types::Task>().await {
+            while let Some(res) = task_consumer.dequeue::<storage::rows::Task>().await {
                 let (delivery, event) = res?;
                 events::task::on_attempt(EventContext::new(&ctx, &delivery, &event)).await?;
             }
@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok::<_, Box<dyn std::error::Error>>(())
         },
         async {
-            while let Some(res) = log_consumer.dequeue::<storage::types::Log>().await {
+            while let Some(res) = log_consumer.dequeue::<storage::rows::Log>().await {
                 let (delivery, event) = res?;
                 events::log::on_create(EventContext::new(&ctx, &delivery, &event)).await?;
             }

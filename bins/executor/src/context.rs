@@ -73,7 +73,7 @@ impl<'a, T> EventContext<'a, T> {
     pub async fn trace(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
         self.enqueue(
             amqp::Key::new("log", amqp::Action::Create),
-            storage::types::Log::trace(self.event.trace_id, "executor", message),
+            storage::rows::Log::trace(self.event.trace_id, "executor", message),
         )
         .await
     }
@@ -81,7 +81,7 @@ impl<'a, T> EventContext<'a, T> {
     pub async fn info(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
         self.enqueue(
             amqp::Key::new("log", amqp::Action::Create),
-            storage::types::Log::info(self.event.trace_id, "executor", message),
+            storage::rows::Log::info(self.event.trace_id, "executor", message),
         )
         .await
     }
@@ -89,7 +89,7 @@ impl<'a, T> EventContext<'a, T> {
     pub async fn warn(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
         self.enqueue(
             amqp::Key::new("log", amqp::Action::Create),
-            storage::types::Log::warn(self.event.trace_id, "executor", message),
+            storage::rows::Log::warn(self.event.trace_id, "executor", message),
         )
         .await
     }
@@ -101,7 +101,7 @@ impl<'a, T> EventContext<'a, T> {
     ) -> Result<(), amqp::AMQPError> {
         self.enqueue(
             amqp::Key::new("log", amqp::Action::Create),
-            storage::types::Log::error(self.event.trace_id, "executor", message).with(context),
+            storage::rows::Log::error(self.event.trace_id, "executor", message).with(context),
         )
         .await
     }

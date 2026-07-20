@@ -1,9 +1,9 @@
 use amqp::{Action, Key};
-use storage::types::{JobSource, Task};
+use storage::rows::{JobSource, Task};
 
 use crate::context::EventContext;
 
-pub async fn on_create<'a>(ctx: EventContext<'a, storage::types::Message>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn on_create<'a>(ctx: EventContext<'a, storage::rows::Message>) -> Result<(), Box<dyn std::error::Error>> {
     let msg = &ctx.event().body;
     let storage = ctx.storage();
     let task = storage

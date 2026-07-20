@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::types::Annotation;
+use crate::rows::Annotation;
 
 pub struct AnnotationStorage<'a> {
     pool: &'a PgPool,

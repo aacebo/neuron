@@ -1,8 +1,15 @@
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize, sqlx::FromRow)]
 pub struct Task {
     pub id: uuid::Uuid,
+    pub trace_id: uuid::Uuid,
+    pub parent_id: Option<uuid::Uuid>,
+    pub chat_id: uuid::Uuid,
+    pub message_id: Option<uuid::Uuid>,
+    pub agent_id: Option<uuid::Uuid>,
     pub name: String,
     pub status: TaskStatus,
+    pub input: Option<serde_json::Value>,
+    pub output: Option<serde_json::Value>,
     pub error: Option<sqlx::types::JsonValue>,
     pub attempts: i32,
     pub max_attempts: i32,
@@ -13,19 +20,6 @@ pub struct Task {
 }
 
 impl Task {
-    pub fn new(name: impl Into<String>) -> Self {
-        let now = chrono::Utc::now();
-
-        Self {
-            id: uuid::Uuid::new_v4(),
-            name: name.into(),
-            max_attempts: 3,
-            created_at: now,
-            updated_at: now,
-            ..Default::default()
-        }
-    }
-
     pub fn start(mut self) -> Self {
         assert!(self.status != TaskStatus::Running);
         let now = chrono::Utc::now();
@@ -92,16 +86,5 @@ impl std::fmt::Display for TaskStatus {
             Self::Failure => write!(f, "failure"),
             Self::Cancelled => write!(f, "cancelled"),
         }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum JobSource {
-    Message(uuid::Uuid),
-}
-
-impl JobSource {
-    pub fn message(message_id: uuid::Uuid) -> Self {
-        Self::Message(message_id)
     }
 }

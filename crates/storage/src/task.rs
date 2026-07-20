@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::types::{JobSource, Task};
+use crate::rows::{JobSource, Task};
 
 pub struct TaskStorage<'a> {
     pool: &'a PgPool,

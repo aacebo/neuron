@@ -1,6 +1,6 @@
 use actix_web::{Error, HttpResponse, post};
 use amqp::{Action, Key};
-use storage::types::Message;
+use storage::rows::Message;
 
 use crate::RequestContext;
 

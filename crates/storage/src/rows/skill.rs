@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize, sqlx::FromRow)]
 pub struct Skill {
     pub id: uuid::Uuid,
     pub tenant_id: uuid::Uuid,
@@ -7,15 +7,8 @@ pub struct Skill {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct SkillPartial {
-    pub id: uuid::Uuid,
-    pub name: String,
-    pub display_name: String,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct Version {
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, sqlx::FromRow)]
+pub struct SkillVersion {
     pub id: uuid::Uuid,
     pub major: usize,
     pub minor: usize,
@@ -30,8 +23,9 @@ pub struct Version {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum VersionStatus {
     Draft,
     Published,

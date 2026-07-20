@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::types::Artifact;
+use crate::rows::Artifact;
 
 pub struct ArtifactStorage<'a> {
     pool: &'a PgPool,

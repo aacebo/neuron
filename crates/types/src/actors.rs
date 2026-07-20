@@ -1,4 +1,4 @@
-use crate::data;
+use crate::{data, skills};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Actor {
@@ -58,6 +58,7 @@ impl Role {
 pub struct Agent {
     pub status: AgentStatus,
     pub description: String,
+    pub skills: Vec<skills::SkillPartial>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

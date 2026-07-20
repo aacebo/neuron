@@ -1,5 +1,5 @@
 use ai::{Error, Result};
-use storage::types::{Annotation, Artifact, ArtifactContent, Span, Task, TextArtifact};
+use storage::rows::{Annotation, Artifact, ArtifactContent, Span, Task, TextArtifact};
 
 type BoxResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 

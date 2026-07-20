@@ -1,13 +1,15 @@
 use sqlx::PgPool;
 
-pub mod types;
+pub mod rows;
 
+mod actor;
 mod annotation;
 mod artifact;
 mod log;
 mod message;
 mod task;
 
+pub use actor::*;
 pub use annotation::*;
 pub use artifact::*;
 pub use log::*;

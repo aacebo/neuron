@@ -1,4 +1,4 @@
-use storage::types::{Annotation, Artifact, Message, MessageSource, Task, TaskStatus};
+use storage::rows::{Annotation, Artifact, Message, MessageSource, Task, TaskStatus};
 
 #[derive(Debug, serde::Serialize)]
 pub struct MessageView {

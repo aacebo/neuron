@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::types::Log;
+use crate::rows::Log;
 
 pub struct LogStorage<'a> {
     pool: &'a PgPool,

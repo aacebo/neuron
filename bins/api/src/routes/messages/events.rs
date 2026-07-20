@@ -3,7 +3,7 @@ use std::time::Duration;
 use actix_web::{HttpResponse, get, web};
 use bytes::Bytes;
 use futures_util::stream;
-use storage::types::TaskStatus;
+use storage::rows::TaskStatus;
 
 use crate::RequestContext;
 use crate::views::MessageView;
