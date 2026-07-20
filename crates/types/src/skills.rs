@@ -17,9 +17,9 @@ pub struct SkillPartial {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Version {
     pub id: uuid::Uuid,
-    pub major: usize,
-    pub minor: usize,
-    pub patch: usize,
+    pub major: i32,
+    pub minor: i32,
+    pub patch: i32,
     pub prerelease: Option<String>,
     pub status: VersionStatus,
     pub description: String,
@@ -36,4 +36,14 @@ pub enum VersionStatus {
     Draft,
     Published,
     Deprecated,
+}
+
+impl VersionStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Draft => "draft",
+            Self::Published => "published",
+            Self::Deprecated => "deprecated",
+        }
+    }
 }

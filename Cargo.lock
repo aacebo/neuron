@@ -356,6 +356,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "storage",
+ "types",
  "uuid",
 ]
 
@@ -1608,6 +1609,7 @@ dependencies = [
  "sqlx",
  "storage",
  "tokio",
+ "types",
  "uuid",
 ]
 

@@ -85,14 +85,20 @@ pub enum TaskStatus {
     Success,
 }
 
+impl TaskStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Queued => "queued",
+            Self::Running => "running",
+            Self::Failure => "failure",
+            Self::Cancelled => "cancelled",
+            Self::Success => "success",
+        }
+    }
+}
+
 impl std::fmt::Display for TaskStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Queued => write!(f, "queued"),
-            Self::Running => write!(f, "running"),
-            Self::Success => write!(f, "success"),
-            Self::Failure => write!(f, "failure"),
-            Self::Cancelled => write!(f, "cancelled"),
-        }
+        f.write_str(self.as_str())
     }
 }

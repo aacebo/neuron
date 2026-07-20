@@ -1,6 +1,7 @@
 use sqlx::PgPool;
+use sqlx::types::Json;
 
-use crate::rows::{JobSource, Task};
+use crate::projection;
 
 pub struct TaskStorage<'a> {
     pool: &'a PgPool,
@@ -11,102 +12,113 @@ impl<'a> TaskStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<Task>, sqlx::Error> {
-        sqlx::query_as::<_, Task>("SELECT * FROM tasks WHERE id = $1")
+    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::tasks::Task>, sqlx::Error> {
+        let query = format!("SELECT {} FROM tasks task WHERE task.id = $1", projection::task("task"));
+        let task = sqlx::query_scalar::<_, Json<types::tasks::Task>>(&query)
             .bind(id)
             .fetch_optional(self.pool)
-            .await
+            .await?;
+
+        Ok(task.map(|Json(task)| task))
     }
 
-    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<Task>, sqlx::Error> {
-        sqlx::query_as::<_, Task>(
+    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<types::tasks::Task>, sqlx::Error> {
+        let query = format!(
             r#"
-            SELECT tasks.*
-            FROM messages_tasks
-            LEFT JOIN tasks
-                ON tasks.id = messages_tasks.task_id
-            WHERE message_id = $1
-            ORDER BY created_at DESC
+            SELECT {}
+            FROM tasks task
+            WHERE task.message_id = $1
+            ORDER BY task.created_at DESC, task.id
             "#,
-        )
-        .bind(message_id)
-        .fetch_all(self.pool)
-        .await
+            projection::task("task")
+        );
+        let tasks = sqlx::query_scalar::<_, Json<types::tasks::Task>>(&query)
+            .bind(message_id)
+            .fetch_all(self.pool)
+            .await?;
+
+        Ok(tasks.into_iter().map(|Json(task)| task).collect())
     }
 
-    pub async fn create(&self, task: &Task, source: JobSource) -> Result<Task, sqlx::Error> {
-        let res = sqlx::query_as::<_, Task>(
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create(
+        &self,
+        parent_id: Option<uuid::Uuid>,
+        chat_id: uuid::Uuid,
+        message_id: Option<uuid::Uuid>,
+        agent_id: Option<uuid::Uuid>,
+        task: types::tasks::Task,
+    ) -> Result<types::tasks::Task, sqlx::Error> {
+        sqlx::query(
             r#"
             INSERT INTO tasks (
-                id,
-                name,
-                status,
-                error,
-                attempts,
-                max_attempts,
-                started_at,
-                ended_at,
-                created_at,
-                updated_at
+                id, trace_id, parent_id, chat_id, message_id, agent_id, name,
+                status, input, output, error, attempts, max_attempts,
+                started_at, ended_at, created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-            RETURNING *
+            VALUES (
+                $1, $2, $3, $4, $5, $6, $7,
+                $8, $9, $10, $11, $12, $13,
+                $14, $15, NOW(), NOW()
+            )
             "#,
         )
         .bind(task.id)
+        .bind(task.trace_id)
+        .bind(parent_id)
+        .bind(chat_id)
+        .bind(message_id)
+        .bind(agent_id)
         .bind(&task.name)
-        .bind(task.status)
+        .bind(task.status.as_str())
+        .bind(&task.input)
+        .bind(&task.output)
         .bind(&task.error)
         .bind(task.attempts)
         .bind(task.max_attempts)
         .bind(task.started_at)
         .bind(task.ended_at)
-        .fetch_one(self.pool)
+        .execute(self.pool)
         .await?;
 
-        #[allow(irrefutable_let_patterns)]
-        if let JobSource::Message(message_id) = source {
-            sqlx::query(
-                r#"
-                INSERT INTO messages_tasks (
-                    message_id,
-                    task_id,
-                    created_at
-                )
-                VALUES ($1, $2, NOW())
-                "#,
-            )
-            .bind(message_id)
-            .bind(task.id)
-            .execute(self.pool)
-            .await?;
-        }
-
-        Ok(res)
+        self.get(task.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
-    pub async fn update(&self, task: &Task) -> Result<Task, sqlx::Error> {
-        sqlx::query_as::<_, Task>(
+    pub async fn update(&self, task: types::tasks::Task) -> Result<types::tasks::Task, sqlx::Error> {
+        let result = sqlx::query(
             r#"
             UPDATE tasks
-            SET status = $2,
-                error = $3,
-                attempts = $4,
-                started_at = $5,
-                ended_at = $6,
+            SET name = $2,
+                status = $3,
+                input = $4,
+                output = $5,
+                error = $6,
+                attempts = $7,
+                max_attempts = $8,
+                started_at = $9,
+                ended_at = $10,
                 updated_at = NOW()
             WHERE id = $1
-            RETURNING *
             "#,
         )
         .bind(task.id)
-        .bind(task.status)
+        .bind(&task.name)
+        .bind(task.status.as_str())
+        .bind(&task.input)
+        .bind(&task.output)
         .bind(&task.error)
         .bind(task.attempts)
+        .bind(task.max_attempts)
         .bind(task.started_at)
         .bind(task.ended_at)
-        .fetch_one(self.pool)
-        .await
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        self.get(task.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {

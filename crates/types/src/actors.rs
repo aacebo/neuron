@@ -45,6 +45,13 @@ pub enum Role {
 }
 
 impl Role {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::User => "user",
+            Self::Agent => "agent",
+        }
+    }
+
     pub fn is_user(self) -> bool {
         matches!(self, Self::User)
     }
@@ -69,6 +76,13 @@ pub enum AgentStatus {
 }
 
 impl AgentStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Online => "online",
+            Self::Offline => "offline",
+        }
+    }
+
     pub fn is_online(self) -> bool {
         matches!(self, Self::Online)
     }

@@ -28,7 +28,9 @@ impl Socket {
         self.queues.get(&key)
     }
 
-    pub async fn consume(&self, key: Key) -> Result<SocketConsumer<'_>, AMQPError> {
+    pub async fn consume(&self, key: &str) -> Result<SocketConsumer<'_>, AMQPError> {
+        let key = key.parse()?;
+
         if !self.queues.contains_key(&key) {
             return Err(AMQPError::custom("not-found", "queue not found"));
         }

@@ -17,3 +17,4 @@ tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
 ai = { path = "../../crates/ai" }
 amqp = { path = "../../crates/amqp" }
 storage = { path = "../../crates/storage" }
+types = { path = "../../crates/types" }

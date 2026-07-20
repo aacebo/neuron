@@ -4,13 +4,12 @@ use sqlx::postgres::PgPoolOptions;
 mod config;
 mod context;
 mod routes;
-mod views;
 
 pub use config::Config;
 pub use context::*;
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_env();
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -25,7 +24,7 @@ async fn main() -> std::io::Result<()> {
 
     let socket = amqp::new(&config.rabbitmq_url)
         .with_app_id("neuron::api")
-        .with_queue(amqp::Key::new("message", amqp::Action::Create))
+        .with_queue("message.create".parse()?)
         .connect()
         .await
         .expect("Failed to connect to AMQP");
@@ -38,13 +37,15 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(ctx.clone()))
             .wrap(RequestContextMiddleware)
             .service(routes::index::get)
-            .service(routes::console::get)
-            .service(routes::console::get_run)
-            .service(routes::chats::messages::create)
-            .service(routes::messages::get)
-            .service(routes::messages::get_events)
+        // .service(routes::console::get)
+        // .service(routes::console::get_run)
+        // .service(routes::chats::messages::create)
+        // .service(routes::messages::get)
+        // .service(routes::messages::get_events)
     })
     .bind(("0.0.0.0", config.port))?
     .run()
-    .await
+    .await?;
+
+    Ok(())
 }
