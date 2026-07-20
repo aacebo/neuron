@@ -34,18 +34,18 @@ impl<'a> Context<'a> {
 }
 
 #[derive(Clone)]
-pub struct EventContext<'a, T> {
+pub struct EventContext<'a> {
     ctx: &'a Context<'a>,
     delivery: &'a amqp::lapin::message::Delivery,
-    event: &'a amqp::Event<T>,
+    event: &'a types::events::Event,
 }
 
-impl<'a, T> EventContext<'a, T> {
-    pub fn new(ctx: &'a Context, delivery: &'a amqp::lapin::message::Delivery, event: &'a amqp::Event<T>) -> Self {
+impl<'a> EventContext<'a> {
+    pub fn new(ctx: &'a Context, delivery: &'a amqp::lapin::message::Delivery, event: &'a types::events::Event) -> Self {
         Self { ctx, delivery, event }
     }
 
-    pub fn event(&self) -> &amqp::Event<T> {
+    pub fn event(&self) -> &types::events::Event {
         self.event
     }
 
@@ -53,10 +53,14 @@ impl<'a, T> EventContext<'a, T> {
         Ok(self.delivery.ack(amqp::lapin::options::BasicAckOptions::default()).await?)
     }
 
-    pub async fn enqueue<V: serde::Serialize>(&self, key: impl Into<amqp::Key>, body: V) -> Result<(), amqp::AMQPError> {
+    pub async fn enqueue(
+        &self,
+        key: impl std::fmt::Display,
+        body: impl Into<types::events::Data>,
+    ) -> Result<(), amqp::AMQPError> {
         self.socket
             .produce()
-            .enqueue(amqp::Event::new(self.event().trace_id, key.into(), body))
+            .enqueue(types::events::new(self.event().trace_id, key, body))
             .await
     }
 
@@ -69,45 +73,9 @@ impl<'a, T> EventContext<'a, T> {
             })
             .await?)
     }
-
-    pub async fn trace(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
-        self.enqueue(
-            amqp::Key::new("log", amqp::Action::Create),
-            storage::rows::Log::trace(self.event.trace_id, "executor", message),
-        )
-        .await
-    }
-
-    pub async fn info(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
-        self.enqueue(
-            amqp::Key::new("log", amqp::Action::Create),
-            storage::rows::Log::info(self.event.trace_id, "executor", message),
-        )
-        .await
-    }
-
-    pub async fn warn(&self, message: impl std::fmt::Display) -> Result<(), amqp::AMQPError> {
-        self.enqueue(
-            amqp::Key::new("log", amqp::Action::Create),
-            storage::rows::Log::warn(self.event.trace_id, "executor", message),
-        )
-        .await
-    }
-
-    pub async fn error(
-        &self,
-        message: impl std::fmt::Display,
-        context: impl Into<sqlx::types::JsonValue>,
-    ) -> Result<(), amqp::AMQPError> {
-        self.enqueue(
-            amqp::Key::new("log", amqp::Action::Create),
-            storage::rows::Log::error(self.event.trace_id, "executor", message).with(context),
-        )
-        .await
-    }
 }
 
-impl<'a, T> std::ops::Deref for EventContext<'a, T> {
+impl<'a> std::ops::Deref for EventContext<'a> {
     type Target = Context<'a>;
 
     fn deref(&self) -> &Self::Target {

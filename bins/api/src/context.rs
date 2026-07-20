@@ -67,10 +67,14 @@ impl RequestContext {
         &self.request_id
     }
 
-    pub async fn enqueue<V: serde::Serialize>(&self, key: impl Into<amqp::Key>, body: V) -> Result<(), amqp::AMQPError> {
+    pub async fn enqueue(
+        &self,
+        key: impl std::fmt::Display,
+        body: impl Into<types::events::Data>,
+    ) -> Result<(), amqp::AMQPError> {
         self.socket
             .produce()
-            .enqueue(amqp::Event::new(self.request_id, key.into(), body))
+            .enqueue(types::events::new(self.request_id, key, body))
             .await
     }
 }

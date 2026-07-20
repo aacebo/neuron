@@ -319,12 +319,11 @@ dependencies = [
 name = "amqp"
 version = "0.0.0"
 dependencies = [
- "chrono",
  "futures-lite 2.6.1",
  "lapin",
  "serde",
  "serde_json",
- "uuid",
+ "types",
 ]
 
 [[package]]

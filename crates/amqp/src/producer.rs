@@ -1,6 +1,6 @@
 use lapin::{options, protocol};
 
-use crate::{AMQPError, Event, Socket};
+use crate::{AMQPError, Key, Socket};
 
 #[derive(Clone)]
 pub struct SocketProducer<'a> {
@@ -16,14 +16,15 @@ impl<'a> SocketProducer<'a> {
         self.socket
     }
 
-    pub async fn enqueue<TBody: serde::Serialize>(&self, event: Event<TBody>) -> Result<(), AMQPError> {
+    pub async fn enqueue(&self, event: types::events::Event) -> Result<(), AMQPError> {
+        let key = event.key.parse::<Key>()?;
         let payload = serde_json::to_vec(&event)?;
-        let routing_key = event.key.to_string();
+        let routing_key = key.to_string();
 
         self.socket
             .channel()
             .basic_publish(
-                event.key.exchange(),
+                key.exchange(),
                 &routing_key,
                 options::BasicPublishOptions::default(),
                 &payload,

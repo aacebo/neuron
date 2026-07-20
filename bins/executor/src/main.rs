@@ -32,32 +32,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("waiting for events...");
 
-    tokio::try_join!(
-        async {
-            while let Some(res) = consumer.dequeue::<types::events::Event>().await {
-                // let (delivery, event) = res?;
-                // events::message::on_create(EventContext::new(&ctx, &delivery, &event)).await?;
-            }
-
-            Ok::<_, Box<dyn std::error::Error>>(())
-        },
-        async {
-            while let Some(res) = task_consumer.dequeue::<storage::rows::Task>().await {
-                // let (delivery, event) = res?;
-                // events::task::on_attempt(EventContext::new(&ctx, &delivery, &event)).await?;
-            }
-
-            Ok::<_, Box<dyn std::error::Error>>(())
-        },
-        async {
-            while let Some(res) = log_consumer.dequeue::<storage::rows::Log>().await {
-                // let (delivery, event) = res?;
-                // events::log::on_create(EventContext::new(&ctx, &delivery, &event)).await?;
-            }
-
-            Ok::<_, Box<dyn std::error::Error>>(())
-        },
-    )?;
+    while let Some(res) = consumer.dequeue().await {
+        // let (delivery, event) = res?;
+        // events::message::on_create(EventContext::new(&ctx, &delivery, &event)).await?;
+    }
 
     Ok(())
 }
