@@ -15,7 +15,7 @@ use crate::context::EventContext;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .compact()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("executor=info")))
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("executor=info")))
         .init();
 
     let config = Config::from_env();
@@ -46,33 +46,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        let actor_id = match &event.data {
-            types::events::Data::Actor { actor } => Some(actor.id),
-            _ => None,
-        };
-
         let span = tracing::info_span!(
             "event.delivery",
             event_key = %event.key,
             event_id = %event.id,
             trace_id = %event.trace_id,
-            actor_id = tracing::field::Empty,
         );
-
-        if let Some(actor_id) = actor_id {
-            span.record("actor_id", tracing::field::display(actor_id));
-        }
 
         async {
             tracing::trace!("received event delivery");
-
             let ctx = EventContext::new(&ctx, &delivery, &event);
             let result = match &event.data {
-                types::events::Data::Actor { actor } => events::actor::on_create(ctx, actor).await,
-                _ => {
-                    tracing::warn!("actor.create event did not contain actor data");
-                    ctx.ack().await.map_err(|error| Box::new(error) as Box<dyn std::error::Error>)
-                }
+                types::events::Data::Actor { actor } => match event.key.as_str() {
+                    "actor.create" => events::actor::on_create(ctx, actor).await,
+                    "actor.update" => events::actor::on_update(ctx, actor).await,
+                    _ => {
+                        tracing::info!(?actor, "unsupported routing key");
+                        Ok(())
+                    }
+                },
+                _ => ctx
+                    .nack()
+                    .await
+                    .map_err(|error| Box::new(error) as Box<dyn std::error::Error>),
             };
 
             if let Err(error) = result {
