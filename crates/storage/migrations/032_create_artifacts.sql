@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS artifacts (
     message_id      UUID                REFERENCES messages(id) ON DELETE CASCADE,
     task_id         UUID                REFERENCES tasks(id) ON DELETE CASCADE,
     name            TEXT                NOT NULL,
-    content         JSONB               NOT NULL,
+    content         JSONB               NOT NULL DEFAULT '[]',
     embedding       VECTOR(384),
     metadata        JSONB               NOT NULL DEFAULT '{}',
     created_by_id   UUID                REFERENCES actors(id) ON DELETE CASCADE,

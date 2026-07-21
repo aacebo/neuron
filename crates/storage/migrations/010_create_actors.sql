@@ -6,8 +6,7 @@ CREATE TABLE IF NOT EXISTS actors (
     name            TEXT        NOT NULL, -- user_name
     display_name    TEXT        NOT NULL, -- User Name
     metadata        JSONB       NOT NULL DEFAULT '{}',
+    embedding       VECTOR(384),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    UNIQUE (tenant_id, external_id)
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

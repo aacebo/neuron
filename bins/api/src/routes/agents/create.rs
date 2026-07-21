@@ -34,6 +34,7 @@ pub async fn create(
                 skills: body.skills,
             }),
             metadata: Default::default(),
+            embedding: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         })

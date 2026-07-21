@@ -1,3 +1,4 @@
+use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
@@ -44,18 +45,21 @@ impl<'a> MessageStorage<'a> {
     }
 
     pub async fn create(&self, message: types::chats::Message) -> Result<types::chats::Message, sqlx::Error> {
+        let embedding = message.embedding.clone().map(Vector::from);
+
         sqlx::query(
             r#"
             INSERT INTO messages (
-                id, chat_id, content, metadata, created_by_id, created_at, updated_at
+                id, chat_id, content, metadata, embedding, created_by_id, created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
             "#,
         )
         .bind(message.id)
         .bind(message.chat.id)
         .bind(Json(&message.content))
         .bind(Json(&message.metadata))
+        .bind(embedding)
         .bind(message.created_by.id)
         .execute(self.pool)
         .await?;
@@ -64,11 +68,13 @@ impl<'a> MessageStorage<'a> {
     }
 
     pub async fn update(&self, message: types::chats::Message) -> Result<types::chats::Message, sqlx::Error> {
+        let embedding = message.embedding.clone().map(Vector::from);
         let result = sqlx::query(
             r#"
             UPDATE messages
             SET content = $2,
                 metadata = $3,
+                embedding = $4,
                 updated_at = NOW()
             WHERE id = $1
             "#,
@@ -76,6 +82,7 @@ impl<'a> MessageStorage<'a> {
         .bind(message.id)
         .bind(Json(&message.content))
         .bind(Json(&message.metadata))
+        .bind(embedding)
         .execute(self.pool)
         .await?;
 

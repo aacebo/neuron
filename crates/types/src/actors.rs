@@ -11,6 +11,7 @@ pub struct Actor {
     #[serde(flatten)]
     pub agent: Option<Agent>,
     pub metadata: data::Metadata,
+    pub embedding: Option<Vec<f32>>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }

@@ -1,3 +1,4 @@
+use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
@@ -24,14 +25,15 @@ impl<'a> ActorStorage<'a> {
 
     pub async fn create(&self, actor: types::actors::Actor) -> Result<types::actors::Actor, sqlx::Error> {
         let mut tx = self.pool.begin().await?;
+        let embedding = actor.embedding.clone().map(Vector::from);
 
         sqlx::query(
             r#"
             INSERT INTO actors (
                 id, tenant_id, external_id, role, name, display_name, metadata,
-                created_at, updated_at
+                embedding, created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
             "#,
         )
         .bind(actor.id)
@@ -41,6 +43,7 @@ impl<'a> ActorStorage<'a> {
         .bind(&actor.name)
         .bind(&actor.display_name)
         .bind(Json(&actor.metadata))
+        .bind(embedding)
         .execute(&mut *tx)
         .await?;
 
@@ -65,7 +68,7 @@ impl<'a> ActorStorage<'a> {
 
     pub async fn update(&self, actor: types::actors::Actor) -> Result<types::actors::Actor, sqlx::Error> {
         let mut tx = self.pool.begin().await?;
-
+        let embedding = actor.embedding.clone().map(Vector::from);
         let result = sqlx::query(
             r#"
             UPDATE actors
@@ -75,6 +78,7 @@ impl<'a> ActorStorage<'a> {
                 name = $5,
                 display_name = $6,
                 metadata = $7,
+                embedding = $8,
                 updated_at = NOW()
             WHERE id = $1
             "#,
@@ -86,6 +90,7 @@ impl<'a> ActorStorage<'a> {
         .bind(&actor.name)
         .bind(&actor.display_name)
         .bind(Json(&actor.metadata))
+        .bind(embedding)
         .execute(&mut *tx)
         .await?;
 

@@ -40,6 +40,10 @@ pub(crate) fn actor(alias: &str) -> String {
             'name', {alias}.name,
             'display_name', {alias}.display_name,
             'metadata', {alias}.metadata,
+            'embedding', CASE
+                WHEN {alias}.embedding IS NULL THEN NULL
+                ELSE ({alias}.embedding::text)::jsonb
+            END,
             'created_at', {alias}.created_at,
             'updated_at', {alias}.updated_at
         ) || COALESCE((
@@ -98,6 +102,10 @@ pub(crate) fn message(alias: &str) -> String {
             ),
             'content', {alias}.content,
             'metadata', {alias}.metadata,
+            'embedding', CASE
+                WHEN {alias}.embedding IS NULL THEN NULL
+                ELSE ({alias}.embedding::text)::jsonb
+            END,
             'created_by', (
                 SELECT {creator}
                 FROM actors creator
