@@ -53,17 +53,6 @@ impl<'a> EventContext<'a> {
         Ok(self.delivery.ack(amqp::lapin::options::BasicAckOptions::default()).await?)
     }
 
-    pub async fn enqueue(
-        &self,
-        key: impl std::fmt::Display,
-        body: impl Into<types::events::Data>,
-    ) -> Result<(), amqp::AMQPError> {
-        self.socket
-            .produce()
-            .enqueue(types::events::new(self.event().trace_id, key, body))
-            .await
-    }
-
     pub async fn nack(&self) -> Result<(), amqp::AMQPError> {
         Ok(self
             .delivery
@@ -72,6 +61,28 @@ impl<'a> EventContext<'a> {
                 requeue: true,
             })
             .await?)
+    }
+
+    pub async fn enqueue(
+        &self,
+        key: impl std::fmt::Display,
+        body: impl Into<types::events::Data>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let data = body.into();
+        let event = self
+            .storage()
+            .events()
+            .create(
+                self.event.trace_id,
+                data.actor_id(),
+                data.chat_id(),
+                data.message_id(),
+                data.task_id(),
+                types::events::new(self.event.trace_id, key, data),
+            )
+            .await?;
+
+        Ok(self.socket.produce().enqueue(event).await?)
     }
 }
 

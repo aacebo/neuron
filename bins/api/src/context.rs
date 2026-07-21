@@ -71,11 +71,22 @@ impl RequestContext {
         &self,
         key: impl std::fmt::Display,
         body: impl Into<types::events::Data>,
-    ) -> Result<(), amqp::AMQPError> {
-        self.socket
-            .produce()
-            .enqueue(types::events::new(self.request_id, key, body))
-            .await
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let data = body.into();
+        let event = self
+            .storage()
+            .events()
+            .create(
+                self.request_id,
+                data.actor_id(),
+                data.chat_id(),
+                data.message_id(),
+                data.task_id(),
+                types::events::new(self.request_id, key, data),
+            )
+            .await?;
+
+        Ok(self.socket.produce().enqueue(event).await?)
     }
 }
 

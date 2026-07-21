@@ -30,6 +30,50 @@ pub enum Data {
     Annotation { annotation: resources::Annotation },
 }
 
+impl Data {
+    pub fn actor_id(&self) -> Option<uuid::Uuid> {
+        match self {
+            Self::Actor { actor } => Some(actor.id),
+            _ => None,
+        }
+    }
+
+    pub fn chat_id(&self) -> Option<uuid::Uuid> {
+        match self {
+            Self::Chat { chat } => Some(chat.id),
+            _ => None,
+        }
+    }
+
+    pub fn message_id(&self) -> Option<uuid::Uuid> {
+        match self {
+            Self::Message { message } => Some(message.id),
+            _ => None,
+        }
+    }
+
+    pub fn task_id(&self) -> Option<uuid::Uuid> {
+        match self {
+            Self::Task { task } => Some(task.id),
+            _ => None,
+        }
+    }
+
+    pub fn artifact_id(&self) -> Option<uuid::Uuid> {
+        match self {
+            Self::Artifact { artifact } => Some(artifact.id),
+            _ => None,
+        }
+    }
+
+    pub fn annotation_id(&self) -> Option<uuid::Uuid> {
+        match self {
+            Self::Annotation { annotation } => Some(annotation.id),
+            _ => None,
+        }
+    }
+}
+
 impl From<actors::Actor> for Data {
     fn from(actor: actors::Actor) -> Self {
         Self::Actor { actor }

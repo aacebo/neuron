@@ -16,11 +16,6 @@ pub async fn on_update(ctx: EventContext<'_>, actor: &types::actors::Actor) -> R
             return Ok(None);
         }
 
-        if actor.embedding.is_some() {
-            tracing::debug!(reason = "already_embedded", "skipping actor embedding");
-            return Ok(None);
-        }
-
         let agent = match &actor.agent {
             Some(agent) => agent,
             None => {
