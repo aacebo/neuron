@@ -1,6 +1,7 @@
+use error::Result;
 use lapin::{options, protocol};
 
-use crate::{Key, Result, Socket};
+use crate::{Key, Socket};
 
 #[derive(Clone)]
 pub struct SocketProducer<'a> {

@@ -1,7 +1,7 @@
-use ::error::IntoError;
 use actix_web::{HttpResponse, post, web};
+use error::Result;
 
-use crate::{RequestContext, Result};
+use crate::RequestContext;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct CreateAgent {
@@ -35,11 +35,9 @@ pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body:
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         })
-        .await
-        .map_err(IntoError::into_error)?;
+        .await?;
 
     let res = HttpResponse::Created().json(&actor);
     ctx.enqueue("actor.create", actor).await?;
-
     Ok(res)
 }

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{Error, Result};
+use error::{Error, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Provider {
@@ -34,7 +34,7 @@ impl FromStr for Provider {
     fn from_str(value: &str) -> Result<Self> {
         match value.to_lowercase().replace(['-', '_'], "").as_str() {
             "openai" => Ok(Self::OpenAI),
-            _ => Err(Error::Parse(format!("unknown provider: {value:?}"))),
+            _ => Err(error::parse(format!("unknown provider: {value:?}"))),
         }
     }
 }

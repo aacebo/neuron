@@ -4,12 +4,10 @@ use tracing_subscriber::EnvFilter;
 
 mod config;
 mod context;
-mod error;
 mod events;
 
 pub use config::Config;
 pub use context::Context;
-pub use error::*;
 
 use crate::context::EventContext;
 
@@ -21,11 +19,7 @@ async fn main() -> ::error::Result<()> {
         .init();
 
     let config = Config::from_env()?;
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&config.database_url)
-        .await
-        .map_err(storage::Error::from)?;
+    let pool = PgPoolOptions::new().max_connections(5).connect(&config.database_url).await?;
 
     let socket = amqp::new(&config.rabbitmq_url)
         .with_app_id("neuron::executor")

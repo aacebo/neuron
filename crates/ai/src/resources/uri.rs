@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use error::{Error, Result};
+
 use super::format::Format;
-use crate::{Error, Result};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Uri {
@@ -23,15 +24,15 @@ impl Uri {
         let Some((scheme, rest)) = uri.split_once("://") else {
             // A bare path is local: `./models/bart`, `/abs/path`.
             return match uri.is_empty() {
-                true => Err(Error::Parse("empty uri".to_string())),
+                true => Err(error::parse("empty uri")),
                 false => Ok(Self::local(uri)),
             };
         };
 
         match scheme {
             "file" => Ok(Self::local(rest)),
-            "http" | "https" => url::Url::parse(uri).map(Self::Http).map_err(Error::parse),
-            _ => Err(Error::Parse(format!("unsupported uri scheme: {scheme:?}"))),
+            "http" | "https" => url::Url::parse(uri).map(Self::Http).map_err(error::parse),
+            _ => Err(error::parse(format!("unsupported uri scheme: {scheme:?}"))),
         }
     }
 
@@ -57,10 +58,10 @@ impl Uri {
             Self::Http(base) => {
                 let base = match base.as_str().ends_with('/') {
                     true => base.clone(),
-                    false => url::Url::parse(&format!("{base}/")).map_err(Error::parse)?,
+                    false => url::Url::parse(&format!("{base}/"))?,
                 };
 
-                base.join(file).map(Self::Http).map_err(Error::parse)
+                base.join(file).map(Self::Http).map_err(error::parse)
             }
         }
     }

@@ -17,6 +17,6 @@ chrono = { version = "0.4", features = ["serde"] }
 sqlx = { version = "0.8", features = ["migrate", "postgres"] }
 
 amqp = { path = "../../crates/amqp" }
-error = { path = "../../crates/error" }
+error = { path = "../../crates/error", features = ["storage", "web"] }
 storage = { path = "../../crates/storage" }
 types = { path = "../../crates/types" }

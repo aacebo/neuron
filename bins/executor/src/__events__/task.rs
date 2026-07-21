@@ -1,4 +1,4 @@
-use ai::{Error, Result};
+use error::{Error, Result};
 use storage::rows::{Annotation, Artifact, ArtifactContent, Span, Task, TextArtifact};
 
 type BoxResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -63,7 +63,7 @@ pub async fn on_attempt<'a>(ctx: EventContext<'a, Task>) -> BoxResult<()> {
             fn join<T>(handle: std::thread::ScopedJoinHandle<'_, Result<T>>) -> Result<T> {
                 match handle.join() {
                     Ok(result) => result,
-                    Err(_) => Err(Error::Inference("inference thread panicked".to_string())),
+                    Err(_) => Err(error::ai::inference("inference thread panicked")),
                 }
             }
 

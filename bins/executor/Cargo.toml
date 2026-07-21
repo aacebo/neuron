@@ -18,6 +18,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 ai = { path = "../../crates/ai" }
 amqp = { path = "../../crates/amqp" }
-error = { path = "../../crates/error" }
+error = { path = "../../crates/error", features = ["amqp", "storage"] }
 storage = { path = "../../crates/storage" }
 types = { path = "../../crates/types" }

@@ -1,10 +1,10 @@
 use std::time::Duration;
 
+use error::Result;
 use reqwest::blocking::Client;
 
 use super::types::{ChatResponse, EmbeddingsResponse, Message};
 use crate::models::{ModelId, Provider};
-use crate::{Error, Result};
 
 /// An OpenAI-compatible client. The same schema is spoken by Azure OpenAI, Ollama, vLLM,
 /// LM Studio, OpenRouter and Together, so `base_url` is all that differs between them.
@@ -46,9 +46,9 @@ impl OpenAI {
             .into_iter()
             .next()
             .map(|choice| choice.message.content)
-            .ok_or_else(|| Error::Inference("no completion returned".to_string()))?;
+            .ok_or_else(|| error::ai("no completion returned"))?;
 
-        serde_json::from_str(&content).map_err(Error::inference)
+        Ok(serde_json::from_str(&content)?)
     }
 
     /// A plain chat completion. Generation returns prose, so unlike `json` it is not constrained
@@ -70,7 +70,7 @@ impl OpenAI {
             .into_iter()
             .next()
             .map(|choice| choice.message.content.trim().to_string())
-            .ok_or_else(|| Error::Inference("no completion returned".to_string()))
+            .ok_or_else(|| error::ai("no completion returned"))
     }
 
     pub fn embeddings(&self, text: &[&str]) -> Result<Vec<Vec<f32>>> {
@@ -83,11 +83,7 @@ impl OpenAI {
         let mut data = response.data;
 
         if data.len() != text.len() {
-            return Err(Error::Inference(format!(
-                "expected {} embeddings, got {}",
-                text.len(),
-                data.len()
-            )));
+            return Err(error::ai(format!("expected {} embeddings, got {}", text.len(), data.len())));
         }
 
         data.sort_by_key(|entry| entry.index);
@@ -102,18 +98,18 @@ impl OpenAI {
             request = request.bearer_auth(key);
         }
 
-        let response = request.send().map_err(Error::network)?;
+        let response = request.send()?;
         let status = response.status();
 
         if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
-            return Err(Error::Auth(format!("{url} returned {status}")));
+            return Err(error::http(format!("{url} returned {status}")));
         }
 
         if !status.is_success() {
             let body = response.text().unwrap_or_default();
-            return Err(Error::Network(format!("{url} returned {status}: {body}")));
+            return Err(error::http(format!("{url} returned {status}: {body}")));
         }
 
-        response.json().map_err(Error::inference)
+        Ok(response.json()?)
     }
 }

@@ -8,11 +8,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub use asset::{Asset, AssetData, Directory as AssetDirectory, File as AssetFile};
+use error::Result;
 pub use format::Format;
 pub use resource::Resource;
 pub use uri::Uri;
-
-use crate::Result;
 
 pub trait Repository: Send + Sync {
     fn exists(&self, path: &Path) -> bool;

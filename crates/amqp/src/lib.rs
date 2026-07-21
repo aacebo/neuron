@@ -1,11 +1,9 @@
 mod consumer;
-mod error;
 mod key;
 mod producer;
 mod socket;
 
 pub use consumer::*;
-pub use error::*;
 pub use key::*;
 pub use lapin;
 pub use producer::*;

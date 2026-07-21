@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::{Error, Key, Result, SocketConsumer, SocketProducer};
+use error::Result;
+
+use crate::{Key, SocketConsumer, SocketProducer};
 
 #[derive(Clone)]
 pub struct Socket {
@@ -32,7 +34,7 @@ impl Socket {
         let key = key.parse()?;
 
         if !self.queues.contains_key(&key) {
-            return Err(Error::custom("not-found", "queue not found"));
+            return Err(error::amqp(format!("queue {key} not found")));
         }
 
         let consumer_tag = format!("{}::{}", self.app_id(), key);

@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use crate::Result;
+use error::Result;
+
 use crate::models::ModelRef;
 
 /// The api key is fingerprinted rather than stored, so credentials never sit in a long-lived map

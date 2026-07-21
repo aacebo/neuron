@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
+use error::Result;
+
 use crate::resources::{Asset, AssetData, Repository, Uri, cache};
-use crate::{Error, Result};
 
 pub struct Http {
     base: Uri,
@@ -32,11 +33,11 @@ impl Repository for Http {
 
     fn read(&self, path: &Path) -> Result<AssetData> {
         let path = self.resolve(path)?;
-        Ok(AssetData::File(std::fs::read(path).map_err(Error::load)?))
+        Ok(AssetData::File(std::fs::read(path)?))
     }
 
     fn resolve(&self, path: &Path) -> Result<PathBuf> {
-        let file = path.to_str().ok_or_else(|| Error::Load(format!("{path:?} is not utf-8")))?;
+        let file = path.to_str().ok_or_else(|| error::parse(format!("{path:?} is not utf-8")))?;
         let cached = self.cached(file);
 
         if cached.exists() {
@@ -44,20 +45,19 @@ impl Repository for Http {
         }
 
         let url = self.base.join(file)?.to_string();
-        let response = reqwest::blocking::get(&url).map_err(Error::network)?;
+        let response = reqwest::blocking::get(&url)?;
 
         if !response.status().is_success() {
-            return Err(Error::Network(format!("{url} returned {}", response.status())));
+            return Err(error::http(format!("{url} returned {}", response.status())));
         }
 
-        let bytes = response.bytes().map_err(Error::network)?;
+        let bytes = response.bytes()?;
 
         if let Some(dir) = cached.parent() {
-            std::fs::create_dir_all(dir).map_err(Error::load)?;
+            std::fs::create_dir_all(dir)?;
         }
 
-        std::fs::write(&cached, &bytes).map_err(Error::load)?;
-
+        std::fs::write(&cached, &bytes)?;
         Ok(cached)
     }
 }

@@ -3,10 +3,10 @@ use std::sync::Arc;
 
 use candle_core::{DType, Device};
 use candle_nn::VarBuilder;
+use error::Result;
 use tokenizers::Tokenizer;
 
 use super::{Repository, tokenizer};
-use crate::{Error, Result};
 
 pub struct Loader {
     repo: Arc<dyn Repository>,
@@ -39,14 +39,14 @@ impl Loader {
     pub fn vars(&self) -> Result<VarBuilder<'static>> {
         let path = self.repo.resolve(Path::new("model.safetensors"))?;
 
-        unsafe { VarBuilder::from_mmaped_safetensors(&[path], self.dtype, &self.device) }.map_err(Error::load)
+        unsafe { VarBuilder::from_mmaped_safetensors(&[path], self.dtype, &self.device) }.map_err(error::ai)
     }
 
     pub fn json<T: serde::de::DeserializeOwned>(&self, file: &str) -> Result<T> {
         let path = self.repo.resolve(Path::new(file))?;
-        let bytes = std::fs::read(path).map_err(Error::load)?;
+        let bytes = std::fs::read(path).map_err(error::ai)?;
 
-        serde_json::from_slice(&bytes).map_err(Error::load)
+        serde_json::from_slice(&bytes).map_err(error::ai)
     }
 
     /// ModelRef-specific: SST-2 is uncased, CoNLL-03 is cased. Lowercasing a cased model wrecks it.

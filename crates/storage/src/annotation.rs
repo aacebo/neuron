@@ -1,7 +1,8 @@
+use error::Result;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::{Error, Result, project};
+use crate::project;
 
 pub struct AnnotationStorage<'a> {
     pool: &'a PgPool,
@@ -70,7 +71,7 @@ impl<'a> AnnotationStorage<'a> {
 
         self.get_by_id(annotation.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn update(&self, annotation: types::resources::Annotation) -> Result<types::resources::Annotation> {
@@ -100,7 +101,7 @@ impl<'a> AnnotationStorage<'a> {
 
         self.get_by_id(annotation.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {

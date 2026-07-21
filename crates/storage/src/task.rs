@@ -1,7 +1,8 @@
+use error::Result;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::{Error, Result, project};
+use crate::project;
 
 pub struct TaskStorage<'a> {
     pool: &'a PgPool,
@@ -84,7 +85,7 @@ impl<'a> TaskStorage<'a> {
 
         self.get_by_id(task.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn update(&self, task: types::tasks::Task) -> Result<types::tasks::Task> {
@@ -123,7 +124,7 @@ impl<'a> TaskStorage<'a> {
 
         self.get_by_id(task.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {

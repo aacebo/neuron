@@ -1,8 +1,9 @@
+use error::Result;
 use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::{Result, project};
+use crate::project;
 
 pub struct ActorStorage<'a> {
     pool: &'a PgPool,

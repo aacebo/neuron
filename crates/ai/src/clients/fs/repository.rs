@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
+use error::Result;
+
 use crate::resources::{Asset, AssetData, Repository};
-use crate::{Error, Result};
 
 pub struct FileSystem {
     root: PathBuf,
@@ -31,13 +32,13 @@ impl Repository for FileSystem {
         let path = self.resolve(path)?;
 
         if !path.is_dir() {
-            return Ok(AssetData::File(std::fs::read(path).map_err(Error::load)?));
+            return Ok(AssetData::File(std::fs::read(path)?));
         }
 
         let mut assets = Vec::new();
 
-        for entry in std::fs::read_dir(path).map_err(Error::load)? {
-            let entry = entry.map_err(Error::load)?;
+        for entry in std::fs::read_dir(path)? {
+            let entry = entry?;
             let path = entry.path();
 
             assets.push(match path.is_dir() {
@@ -54,7 +55,7 @@ impl Repository for FileSystem {
 
         match path.exists() {
             true => Ok(path),
-            false => Err(Error::Load(format!("{} not found", path.display()))),
+            false => Err(error::io(format!("{} not found", path.display()))),
         }
     }
 }

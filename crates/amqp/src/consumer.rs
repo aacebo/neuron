@@ -1,6 +1,7 @@
+use error::Result;
 use futures_lite::StreamExt;
 
-use crate::{Result, Socket};
+use crate::Socket;
 
 #[derive(Clone)]
 pub struct SocketConsumer<'a> {

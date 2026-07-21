@@ -1,8 +1,9 @@
+use error::Result;
 use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::{Error, Result, project};
+use crate::project;
 
 pub struct ArtifactStorage<'a> {
     pool: &'a PgPool,
@@ -75,7 +76,7 @@ impl<'a> ArtifactStorage<'a> {
 
         self.get_by_id(artifact.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn update(&self, artifact: types::resources::Artifact) -> Result<types::resources::Artifact> {
@@ -105,7 +106,7 @@ impl<'a> ArtifactStorage<'a> {
 
         self.get_by_id(artifact.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn update_embedding(&self, id: uuid::Uuid, embedding: Vec<f32>) -> Result<types::resources::Artifact> {
@@ -126,7 +127,9 @@ impl<'a> ArtifactStorage<'a> {
             return Err(sqlx::Error::RowNotFound.into());
         }
 
-        self.get_by_id(id).await?.ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+        self.get_by_id(id)
+            .await?
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {

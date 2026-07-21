@@ -12,15 +12,15 @@ impl Key {
 }
 
 impl std::str::FromStr for Key {
-    type Err = crate::Error;
+    type Err = error::Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         let (queue, action) = value
             .split_once('.')
-            .ok_or_else(|| crate::Error::custom("parse", value.to_owned()))?;
+            .ok_or_else(|| error::parse(format!("invalid amqp routing key {value}")))?;
 
         if queue.is_empty() || action.is_empty() || action.contains('.') {
-            return Err(crate::Error::custom("parse", value.to_owned()));
+            return Err(error::parse(value));
         }
 
         Ok(Self {
@@ -55,14 +55,14 @@ impl Action {
 }
 
 impl std::str::FromStr for Action {
-    type Err = crate::Error;
+    type Err = error::Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             "create" => Ok(Self::Create),
             "update" => Ok(Self::Update),
             "*" => Ok(Self::Any),
-            _ => Err(crate::Error::custom("parse", value.to_owned())),
+            _ => Err(error::parse(value)),
         }
     }
 }
@@ -79,8 +79,7 @@ mod tests {
 
     #[test]
     fn invalid_key_returns_the_crate_error() {
-        let error: crate::Error = "invalid".parse::<Key>().unwrap_err();
-        let common: error::Error = error.into();
+        let common = "invalid".parse::<Key>().unwrap_err();
 
         assert_eq!(common.name(), "AMQP");
         assert_eq!(common.message(), "amqp parse: invalid");

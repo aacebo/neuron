@@ -2,12 +2,12 @@ use std::sync::Mutex;
 
 use candle_core::Tensor;
 use candle_nn::VarBuilder;
+use error::Result;
 
 use super::config::Config;
 use super::model::Bart;
 use crate::models::{Context, GenOpts, Generate};
 use crate::pipelines::generate;
-use crate::{Error, Result};
 
 /// BART behind the `Generate` capability.
 ///
@@ -24,7 +24,7 @@ pub struct Summarizer {
 impl Summarizer {
     pub fn new(config: &Config, vars: VarBuilder) -> Result<Self> {
         Ok(Self {
-            model: Mutex::new(Bart::new(config, vars).map_err(Error::load)?),
+            model: Mutex::new(Bart::new(config, vars)?),
             generation: generate::Config::from(config),
             max_position_embeddings: config.max_position_embeddings,
         })
@@ -58,19 +58,17 @@ impl Summarizer {
 
         // The learned positional embeddings only cover `max_position_embeddings`.
         let ids = &ids[..ids.len().min(self.max_position_embeddings)];
-        let input = Tensor::from_slice(ids, (1, ids.len()), cx.device()).map_err(Error::inference)?;
-
-        // Generation mutates the KV cache, so the model is serialized behind a mutex.
+        let input = Tensor::from_slice(ids, (1, ids.len()), cx.device())?;
         let mut model = self
             .model
             .lock()
-            .map_err(|_| Error::Inference("summarization model lock poisoned".to_string()))?;
+            .map_err(|_| error::ai("summarization model lock poisoned".to_string()))?;
 
         let tokens = generate::run(&mut model, generation, &input, cx.device())?;
 
         cx.tokenizer()?
             .decode(&tokens, true)
             .map(|summary| summary.trim().to_string())
-            .map_err(Error::tokenize)
+            .map_err(error::ai)
     }
 }

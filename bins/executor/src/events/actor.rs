@@ -1,4 +1,3 @@
-use crate::Error;
 use crate::context::EventContext;
 
 pub async fn on_event(ctx: EventContext<'_>, actor: &types::actors::Actor) -> ::error::Result<()> {
@@ -58,25 +57,23 @@ pub async fn on_event(ctx: EventContext<'_>, actor: &types::actors::Actor) -> ::
         })?;
 
         if artifacts.len() != 1 {
-            return Err(Error::embedding(format!(
+            return Err(error::ai(format!(
                 "embedding pipeline returned {} artifacts; expected 1",
                 artifacts.len()
-            ))
-            .into());
+            )));
         }
 
         let vector = artifacts
             .into_iter()
             .next()
             .and_then(|artifact| artifact.vector)
-            .ok_or_else(|| Error::embedding("embedding pipeline returned no vector"))?;
+            .ok_or_else(|| error::ai("embedding pipeline returned no vector"))?;
 
         if vector.len() != 384 {
-            return Err(Error::embedding(format!(
+            return Err(error::ai(format!(
                 "embedding pipeline returned {} dimensions; expected 384",
                 vector.len()
-            ))
-            .into());
+            )));
         }
 
         let dimensions = vector.len();

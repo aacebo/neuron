@@ -1,5 +1,6 @@
+use error::Result;
+
 use super::{candidates, scorer};
-use crate::Result;
 use crate::models::{Context, Embed};
 use crate::types::Keyword;
 

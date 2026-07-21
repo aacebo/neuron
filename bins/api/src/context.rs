@@ -88,7 +88,7 @@ impl RequestContext {
 }
 
 impl FromRequest for RequestContext {
-    type Error = crate::Error;
+    type Error = error::Error;
     type Future = Ready<Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _payload: &mut actix_web::dev::Payload) -> Self::Future {

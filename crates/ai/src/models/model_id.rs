@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{Error, Result};
+use error::{Error, Result};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ModelId {
@@ -24,7 +24,7 @@ impl FromStr for ModelId {
     fn from_str(value: &str) -> Result<Self> {
         let Some((group, name)) = value.split_once('/') else {
             if value.is_empty() {
-                return Err(Error::Parse(format!("invalid model id: {value:?}")));
+                return Err(error::parse(format!("invalid model id: {value:?}")));
             }
 
             return Ok(Self {
@@ -34,7 +34,7 @@ impl FromStr for ModelId {
         };
 
         if group.is_empty() || name.is_empty() {
-            return Err(Error::Parse(format!("invalid model id: {value:?}")));
+            return Err(error::parse(format!("invalid model id: {value:?}")));
         }
 
         Ok(Self {

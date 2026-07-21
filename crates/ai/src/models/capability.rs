@@ -1,9 +1,9 @@
 use candle_core::Device;
+use error::Result;
 use tokenizers::Tokenizer;
 
 use crate::pipelines::common::Batch;
 use crate::types::Entity;
-use crate::{Error, Result};
 
 /// Borrows what a model needs to turn text into tensors. A loaded model owns its weights; the
 /// tokenizer and device are lent per call, so one set of weights can serve several capabilities.
@@ -32,16 +32,16 @@ impl<'a> Context<'a> {
 
     pub fn tokenizer(&self) -> Result<&Tokenizer> {
         self.tokenizer
-            .ok_or_else(|| Error::Inference(format!("{} has no tokenizer", self.name)))
+            .ok_or_else(|| error::ai(format!("{} has no tokenizer", self.name)))
     }
 
     pub fn encode(&self, text: &[&str]) -> Result<Batch> {
-        let encodings = self.tokenizer()?.encode_batch(text.to_vec(), true).map_err(Error::tokenize)?;
+        let encodings = self.tokenizer()?.encode_batch(text.to_vec(), true).map_err(error::ai)?;
         Batch::new(encodings, self.device)
     }
 
     pub fn encode_one(&self, text: &str) -> Result<tokenizers::Encoding> {
-        self.tokenizer()?.encode(text, true).map_err(Error::tokenize)
+        self.tokenizer()?.encode(text, true).map_err(error::ai)
     }
 }
 

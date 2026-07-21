@@ -3,26 +3,17 @@ use sqlx::postgres::PgPoolOptions;
 
 mod config;
 mod context;
-mod error;
 mod routes;
 
 pub use config::Config;
 pub use context::*;
-pub use error::*;
 
 #[actix_web::main]
 async fn main() -> ::error::Result<()> {
     let config = Config::from_env()?;
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&config.database_url)
-        .await
-        .map_err(storage::Error::from)?;
+    let pool = PgPoolOptions::new().max_connections(5).connect(&config.database_url).await?;
 
-    sqlx::migrate!("../../crates/storage/migrations")
-        .run(&pool)
-        .await
-        .map_err(Error::server)?;
+    sqlx::migrate!("../../crates/storage/migrations").run(&pool).await?;
 
     let socket = amqp::new(&config.rabbitmq_url)
         .with_app_id("neuron::api")
@@ -46,11 +37,9 @@ async fn main() -> ::error::Result<()> {
         // .service(routes::messages::get)
         // .service(routes::messages::get_events)
     })
-    .bind(("0.0.0.0", config.port))
-    .map_err(Error::server)?
+    .bind(("0.0.0.0", config.port))?
     .run()
-    .await
-    .map_err(Error::server)?;
+    .await?;
 
     Ok(())
 }

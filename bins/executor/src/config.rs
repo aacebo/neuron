@@ -8,11 +8,11 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_env() -> crate::Result<Self> {
+    pub fn from_env() -> error::Result<Self> {
         let port = env::var("PORT")
             .unwrap_or_else(|_| "8080".to_string())
             .parse()
-            .map_err(crate::Error::config)?;
+            .map_err(error::config)?;
 
         let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://admin:admin@localhost:5432/main".to_string());
         let rabbitmq_url = env::var("RABBITMQ_URL").unwrap_or_else(|_| "amqp://admin:admin@localhost:5672".to_string());

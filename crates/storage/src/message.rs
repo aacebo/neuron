@@ -1,8 +1,9 @@
+use error::Result;
 use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::{Error, Result, project};
+use crate::project;
 
 pub struct MessageStorage<'a> {
     pool: &'a PgPool,
@@ -68,7 +69,7 @@ impl<'a> MessageStorage<'a> {
 
         self.get_by_id(message.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn update(&self, message: types::chats::Message) -> Result<types::chats::Message> {
@@ -96,7 +97,7 @@ impl<'a> MessageStorage<'a> {
 
         self.get_by_id(message.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn update_embedding(&self, id: uuid::Uuid, embedding: Vec<f32>) -> Result<types::chats::Message> {
@@ -117,7 +118,9 @@ impl<'a> MessageStorage<'a> {
             return Err(sqlx::Error::RowNotFound.into());
         }
 
-        self.get_by_id(id).await?.ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+        self.get_by_id(id)
+            .await?
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {

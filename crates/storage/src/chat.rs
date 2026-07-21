@@ -1,7 +1,8 @@
+use error::Result;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::{Error, Result, project};
+use crate::project;
 
 pub struct ChatStorage<'a> {
     pool: &'a PgPool,
@@ -38,7 +39,7 @@ impl<'a> ChatStorage<'a> {
 
         self.get_by_id(chat.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn update(&self, chat: types::chats::Chat) -> Result<types::chats::Chat> {
@@ -63,7 +64,7 @@ impl<'a> ChatStorage<'a> {
 
         self.get_by_id(chat.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn set_actors(&self, chat_id: uuid::Uuid, actor_ids: &[uuid::Uuid]) -> Result<types::chats::Chat> {
@@ -92,7 +93,7 @@ impl<'a> ChatStorage<'a> {
         tx.commit().await?;
         self.get_by_id(chat_id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {

@@ -1,7 +1,8 @@
+use error::Result;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::{Error, Result, project};
+use crate::project;
 
 pub struct EventStorage<'a> {
     pool: &'a PgPool,
@@ -96,6 +97,6 @@ impl<'a> EventStorage<'a> {
 
         self.get_by_id(event.id)
             .await?
-            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
+            .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 }

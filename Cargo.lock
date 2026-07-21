@@ -1574,8 +1574,14 @@ dependencies = [
 name = "error"
 version = "0.0.0"
 dependencies = [
+ "actix-web",
+ "candle-core",
+ "lapin",
+ "reqwest 0.13.4",
  "serde",
  "serde_json",
+ "sqlx",
+ "url",
 ]
 
 [[package]]

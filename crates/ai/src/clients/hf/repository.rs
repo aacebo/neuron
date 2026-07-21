@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
+use error::Result;
 use hf_hub::api::sync::{ApiBuilder, ApiRepo};
 
 use crate::models::ModelId;
 use crate::resources::{Asset, AssetData, Repository, cache};
-use crate::{Error, Result};
 
 pub struct HuggingFace {
     repo: Box<ApiRepo>,
@@ -18,7 +18,7 @@ impl HuggingFace {
             builder = builder.with_cache_dir(dir);
         }
 
-        let api = builder.build().map_err(Error::load)?;
+        let api = builder.build().map_err(error::http)?;
 
         Ok(Self {
             repo: Box::new(api.model(id.to_string())),
@@ -37,11 +37,11 @@ impl Repository for HuggingFace {
 
     fn read(&self, path: &Path) -> Result<AssetData> {
         let path = self.resolve(path)?;
-        Ok(AssetData::File(std::fs::read(path).map_err(Error::load)?))
+        Ok(AssetData::File(std::fs::read(path)?))
     }
 
     fn resolve(&self, path: &Path) -> Result<PathBuf> {
-        let file = path.to_str().ok_or_else(|| Error::Load(format!("{path:?} is not utf-8")))?;
-        self.repo.get(file).map_err(Error::load)
+        let file = path.to_str().ok_or_else(|| error::parse(format!("{path:?} is not utf-8")))?;
+        self.repo.get(file).map_err(error::http)
     }
 }

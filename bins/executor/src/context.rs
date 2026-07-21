@@ -50,10 +50,7 @@ impl<'a> EventContext<'a> {
     }
 
     pub async fn ack(&self) -> ::error::Result<()> {
-        self.delivery
-            .ack(amqp::lapin::options::BasicAckOptions::default())
-            .await
-            .map_err(amqp::Error::from)?;
+        self.delivery.ack(amqp::lapin::options::BasicAckOptions::default()).await?;
         Ok(())
     }
 
@@ -63,8 +60,7 @@ impl<'a> EventContext<'a> {
                 multiple: false,
                 requeue: true,
             })
-            .await
-            .map_err(amqp::Error::from)?;
+            .await?;
         Ok(())
     }
 
