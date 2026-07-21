@@ -104,6 +104,27 @@ impl<'a> ArtifactStorage<'a> {
         self.get_by_id(artifact.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
+    pub async fn update_embedding(&self, id: uuid::Uuid, embedding: Vec<f32>) -> Result<types::resources::Artifact, sqlx::Error> {
+        let result = sqlx::query(
+            r#"
+            UPDATE artifacts
+            SET embedding = $2,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .bind(Vector::from(embedding))
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        self.get_by_id(id).await?.ok_or(sqlx::Error::RowNotFound)
+    }
+
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
         let result = sqlx::query("DELETE FROM artifacts WHERE id = $1")
             .bind(id)
