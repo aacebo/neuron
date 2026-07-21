@@ -13,7 +13,10 @@ async fn main() -> ::error::Result<()> {
     let config = Config::from_env()?;
     let pool = PgPoolOptions::new().max_connections(5).connect(&config.database_url).await?;
 
-    sqlx::migrate!("../../crates/storage/migrations").run(&pool).await?;
+    sqlx::migrate!("../../crates/storage/migrations")
+        .run(&pool)
+        .await
+        .map_err(error::sql)?;
 
     let socket = amqp::new(&config.rabbitmq_url)
         .with_app_id("neuron::api")

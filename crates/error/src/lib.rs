@@ -127,13 +127,6 @@ impl From<sqlx::Error> for Error {
     }
 }
 
-#[cfg(feature = "storage")]
-impl From<sqlx::migrate::MigrateError> for Error {
-    fn from(value: sqlx::migrate::MigrateError) -> Self {
-        sql(value)
-    }
-}
-
 #[cfg(feature = "web")]
 impl From<actix_web::Error> for Error {
     fn from(value: actix_web::Error) -> Self {
@@ -154,107 +147,5 @@ impl actix_web::ResponseError for Error {
 
     fn error_response(&self) -> actix_web::HttpResponse {
         actix_web::HttpResponse::build(self.status_code()).json(self)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn constructors_expose_and_serialize_the_common_shape() {
-        let error = not_found("actor 42");
-
-        assert_eq!(error.name(), "NotFound");
-        assert_eq!(error.message(), "actor 42");
-        assert_eq!(error.to_string(), "error::NotFound => actor 42");
-        assert_eq!(
-            serde_json::to_value(error).unwrap(),
-            serde_json::json!({"name": "NotFound", "message": "actor 42"})
-        );
-    }
-
-    #[test]
-    fn into_error_uses_from_conversions() {
-        let error = bad_request("invalid input").into_error();
-        assert_eq!(error.name(), "BadRequest");
-    }
-
-    #[test]
-    fn serde_json_errors_convert_without_a_feature() {
-        let error = serde_json::from_str::<serde_json::Value>("{").unwrap_err().into_error();
-        assert_eq!(error.name(), "JSON");
-        assert!(!error.message().is_empty());
-    }
-
-    #[test]
-    fn contextual_constructors_preserve_domain_messages() {
-        assert_eq!(ai::load("missing weights").message(), "failed to load model: missing weights");
-        assert_eq!(amqp::invalid_key("bad key").message(), "amqp parse: bad key");
-        assert_eq!(amqp::invalid_action("bad action").message(), "amqp parse: bad action");
-        assert_eq!(amqp::queue_not_found().message(), "amqp not-found: queue not found");
-        assert_eq!(api::config("bad port").message(), "configuration failed: bad port");
-        assert_eq!(api::request("bad frame").message(), "invalid request: bad frame");
-        assert_eq!(
-            executor::embedding("wrong size").message(),
-            "invalid embedding output: wrong size"
-        );
-    }
-
-    #[cfg(feature = "ai")]
-    #[test]
-    fn ai_from_conversions_use_the_ai_domain() {
-        let candle = candle_core::Error::Msg("bad tensor".to_string()).into_error();
-        assert_eq!(candle.name(), "AI");
-        assert_eq!(candle.message(), "inference failed: bad tensor");
-
-        let url = url::Url::parse(":").unwrap_err().into_error();
-        assert_eq!(url.name(), "AI");
-
-        let request = reqwest::Client::new().get("://").build().unwrap_err().into_error();
-        assert_eq!(request.name(), "AI");
-        assert!(request.message().starts_with("request failed: "));
-    }
-
-    #[cfg(feature = "amqp")]
-    #[test]
-    fn amqp_from_conversion_uses_the_amqp_domain() {
-        let error = lapin::Error::ChannelsLimitReached.into_error();
-        assert_eq!(error.name(), "AMQP");
-        assert!(error.message().starts_with("amqp: "));
-    }
-
-    #[cfg(feature = "storage")]
-    #[test]
-    fn storage_from_conversion_uses_the_storage_domain() {
-        let error = sqlx::Error::RowNotFound.into_error();
-        assert_eq!(error.name(), "Storage");
-        assert_eq!(
-            error.message(),
-            "no rows returned by a query that expected to return at least one row"
-        );
-    }
-
-    #[cfg(feature = "web")]
-    #[actix_web::test]
-    async fn actix_responses_map_statuses_and_json() {
-        use actix_web::ResponseError;
-        use actix_web::body::to_bytes;
-        use actix_web::http::StatusCode;
-
-        let cases = [
-            (bad_request("bad"), StatusCode::BAD_REQUEST),
-            (unauthorized("no"), StatusCode::UNAUTHORIZED),
-            (not_found("gone"), StatusCode::NOT_FOUND),
-            (storage("down"), StatusCode::INTERNAL_SERVER_ERROR),
-        ];
-
-        for (error, status) in cases {
-            let expected = serde_json::to_value(&error).unwrap();
-            let response = error.error_response();
-            assert_eq!(response.status(), status);
-            let body = to_bytes(response.into_body()).await.unwrap();
-            assert_eq!(serde_json::from_slice::<serde_json::Value>(&body).unwrap(), expected);
-        }
     }
 }

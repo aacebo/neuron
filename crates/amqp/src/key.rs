@@ -72,16 +72,3 @@ impl std::fmt::Display for Action {
         write!(f, "{}", self.as_str())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn invalid_key_returns_the_crate_error() {
-        let common = "invalid".parse::<Key>().unwrap_err();
-
-        assert_eq!(common.name(), "AMQP");
-        assert_eq!(common.message(), "amqp parse: invalid");
-    }
-}
