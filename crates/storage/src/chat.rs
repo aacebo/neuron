@@ -12,7 +12,7 @@ impl<'a> ChatStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::chats::Chat>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::chats::Chat>, sqlx::Error> {
         let query = format!("SELECT {} FROM chats chat WHERE chat.id = $1", project::chat("chat"));
         let chat = sqlx::query_scalar::<_, Json<types::chats::Chat>>(&query)
             .bind(id)
@@ -36,7 +36,7 @@ impl<'a> ChatStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get(chat.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(chat.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn update(&self, chat: types::chats::Chat) -> Result<types::chats::Chat, sqlx::Error> {
@@ -59,7 +59,7 @@ impl<'a> ChatStorage<'a> {
             return Err(sqlx::Error::RowNotFound);
         }
 
-        self.get(chat.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(chat.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn set_actors(&self, chat_id: uuid::Uuid, actor_ids: &[uuid::Uuid]) -> Result<types::chats::Chat, sqlx::Error> {
@@ -86,7 +86,7 @@ impl<'a> ChatStorage<'a> {
         .await?;
 
         tx.commit().await?;
-        self.get(chat_id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(chat_id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
@@ -94,6 +94,7 @@ impl<'a> ChatStorage<'a> {
             .bind(id)
             .execute(self.pool)
             .await?;
+
         Ok(result.rows_affected() > 0)
     }
 }

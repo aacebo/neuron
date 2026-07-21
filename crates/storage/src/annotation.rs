@@ -12,7 +12,7 @@ impl<'a> AnnotationStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::resources::Annotation>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::resources::Annotation>, sqlx::Error> {
         let query = format!(
             "SELECT {} FROM annotations annotation WHERE annotation.id = $1",
             project::annotation("annotation")
@@ -68,7 +68,7 @@ impl<'a> AnnotationStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get(annotation.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(annotation.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn update(&self, annotation: types::resources::Annotation) -> Result<types::resources::Annotation, sqlx::Error> {
@@ -96,7 +96,7 @@ impl<'a> AnnotationStorage<'a> {
             return Err(sqlx::Error::RowNotFound);
         }
 
-        self.get(annotation.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(annotation.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {

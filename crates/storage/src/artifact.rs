@@ -13,7 +13,7 @@ impl<'a> ArtifactStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::resources::Artifact>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::resources::Artifact>, sqlx::Error> {
         let query = format!(
             "SELECT {} FROM artifacts artifact WHERE artifact.id = $1",
             project::artifact("artifact")
@@ -73,7 +73,7 @@ impl<'a> ArtifactStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get(artifact.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(artifact.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn update(&self, artifact: types::resources::Artifact) -> Result<types::resources::Artifact, sqlx::Error> {
@@ -101,7 +101,7 @@ impl<'a> ArtifactStorage<'a> {
             return Err(sqlx::Error::RowNotFound);
         }
 
-        self.get(artifact.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(artifact.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
@@ -109,6 +109,7 @@ impl<'a> ArtifactStorage<'a> {
             .bind(id)
             .execute(self.pool)
             .await?;
+
         Ok(result.rows_affected() > 0)
     }
 }

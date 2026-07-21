@@ -13,11 +13,12 @@ impl<'a> MessageStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::chats::Message>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::chats::Message>, sqlx::Error> {
         let query = format!(
             "SELECT {} FROM messages message WHERE message.id = $1",
             project::message("message")
         );
+
         let message = sqlx::query_scalar::<_, Json<types::chats::Message>>(&query)
             .bind(id)
             .fetch_optional(self.pool)
@@ -36,6 +37,7 @@ impl<'a> MessageStorage<'a> {
             "#,
             project::message("message")
         );
+
         let message = sqlx::query_scalar::<_, Json<types::chats::Message>>(&query)
             .bind(task_id)
             .fetch_optional(self.pool)
@@ -64,7 +66,7 @@ impl<'a> MessageStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get(message.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(message.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn update(&self, message: types::chats::Message) -> Result<types::chats::Message, sqlx::Error> {
@@ -90,7 +92,7 @@ impl<'a> MessageStorage<'a> {
             return Err(sqlx::Error::RowNotFound);
         }
 
-        self.get(message.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(message.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
@@ -98,6 +100,7 @@ impl<'a> MessageStorage<'a> {
             .bind(id)
             .execute(self.pool)
             .await?;
+
         Ok(result.rows_affected() > 0)
     }
 }

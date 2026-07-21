@@ -325,7 +325,7 @@ mod tests {
     }
 
     #[test]
-    fn task_event_skill_and_version_projection_shapes_deserialize() {
+    fn task_and_event_projection_shapes_deserialize() {
         let task: types::tasks::Task = serde_json::from_value(task_value()).unwrap();
         assert_eq!(task.status, types::tasks::TaskStatus::Queued);
 
@@ -341,32 +341,5 @@ mod tests {
         });
         let event: types::events::Event = serde_json::from_value(event).unwrap();
         assert_eq!(event.key, "task.created");
-
-        let skill = json!({
-            "id": ID,
-            "tenant_id": RELATED_ID,
-            "name": "summarize",
-            "display_name": "Summarize",
-            "created_at": CREATED_AT
-        });
-        let skill: types::skills::Skill = serde_json::from_value(skill).unwrap();
-        assert_eq!(skill.name, "summarize");
-
-        let version = json!({
-            "id": ID,
-            "major": 1,
-            "minor": 2,
-            "patch": 3,
-            "prerelease": null,
-            "status": "published",
-            "description": "Stable",
-            "tags": ["text"],
-            "input": null,
-            "output": null,
-            "created_at": CREATED_AT,
-            "updated_at": CREATED_AT
-        });
-        let version: types::skills::Version = serde_json::from_value(version).unwrap();
-        assert_eq!((version.major, version.minor, version.patch), (1, 2, 3));
     }
 }

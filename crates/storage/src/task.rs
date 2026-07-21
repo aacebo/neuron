@@ -12,7 +12,7 @@ impl<'a> TaskStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::tasks::Task>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::tasks::Task>, sqlx::Error> {
         let query = format!("SELECT {} FROM tasks task WHERE task.id = $1", project::task("task"));
         let task = sqlx::query_scalar::<_, Json<types::tasks::Task>>(&query)
             .bind(id)
@@ -32,6 +32,7 @@ impl<'a> TaskStorage<'a> {
             "#,
             project::task("task")
         );
+
         let tasks = sqlx::query_scalar::<_, Json<types::tasks::Task>>(&query)
             .bind(message_id)
             .fetch_all(self.pool)
@@ -81,7 +82,7 @@ impl<'a> TaskStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get(task.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(task.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn update(&self, task: types::tasks::Task) -> Result<types::tasks::Task, sqlx::Error> {
@@ -118,7 +119,7 @@ impl<'a> TaskStorage<'a> {
             return Err(sqlx::Error::RowNotFound);
         }
 
-        self.get(task.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(task.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
@@ -126,6 +127,7 @@ impl<'a> TaskStorage<'a> {
             .bind(id)
             .execute(self.pool)
             .await?;
+
         Ok(result.rows_affected() > 0)
     }
 }

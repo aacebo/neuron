@@ -12,11 +12,12 @@ impl<'a> EventStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::events::Event>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::events::Event>, sqlx::Error> {
         let query = format!(
             "SELECT {} FROM events stored_event WHERE stored_event.id = $1",
             project::event("stored_event")
         );
+
         let event = sqlx::query_scalar::<_, Json<types::events::Event>>(&query)
             .bind(id)
             .fetch_optional(self.pool)
@@ -53,6 +54,7 @@ impl<'a> EventStorage<'a> {
             "#,
             project::event("stored_event")
         );
+
         let events = sqlx::query_scalar::<_, Json<types::events::Event>>(&query)
             .bind(task_id)
             .fetch_all(self.pool)
@@ -92,6 +94,6 @@ impl<'a> EventStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get(event.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(event.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 }

@@ -13,7 +13,7 @@ impl<'a> ActorStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get(&self, id: uuid::Uuid) -> Result<Option<types::actors::Actor>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::actors::Actor>, sqlx::Error> {
         let query = format!("SELECT {} FROM actors actor WHERE actor.id = $1", project::actor("actor"));
         let actor = sqlx::query_scalar::<_, Json<types::actors::Actor>>(&query)
             .bind(id)
@@ -50,7 +50,7 @@ impl<'a> ActorStorage<'a> {
         if let Some(agent) = &actor.agent {
             sqlx::query(
                 r#"
-                INSERT INTO agents (actor_id, status, description)
+                INSERT INTO agents (actor_id, status, description, skills)
                 VALUES ($1, $2, $3, $4)
                 "#,
             )
@@ -63,7 +63,7 @@ impl<'a> ActorStorage<'a> {
         }
 
         tx.commit().await?;
-        self.get(actor.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(actor.id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn update(&self, actor: types::actors::Actor) -> Result<types::actors::Actor, sqlx::Error> {
@@ -101,11 +101,12 @@ impl<'a> ActorStorage<'a> {
         if let Some(agent) = &actor.agent {
             sqlx::query(
                 r#"
-                INSERT INTO agents (actor_id, status, description)
+                INSERT INTO agents (actor_id, status, description, skills)
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (actor_id) DO UPDATE
                 SET status = EXCLUDED.status,
-                    description = EXCLUDED.description
+                    description = EXCLUDED.description,
+                    skills = EXCLUDED.skills
                 "#,
             )
             .bind(actor.id)
@@ -122,7 +123,28 @@ impl<'a> ActorStorage<'a> {
         }
 
         tx.commit().await?;
-        self.get(actor.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(actor.id).await?.ok_or(sqlx::Error::RowNotFound)
+    }
+
+    pub async fn update_embedding(&self, id: uuid::Uuid, embedding: Vec<f32>) -> Result<types::actors::Actor, sqlx::Error> {
+        let result = sqlx::query(
+            r#"
+            UPDATE actors
+            SET embedding = $2,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .bind(Vector::from(embedding))
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        self.get_by_id(id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
@@ -130,6 +152,7 @@ impl<'a> ActorStorage<'a> {
             .bind(id)
             .execute(self.pool)
             .await?;
+
         Ok(result.rows_affected() > 0)
     }
 }
