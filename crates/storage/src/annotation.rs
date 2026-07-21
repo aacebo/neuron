@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::project;
+use crate::{Error, Result, project};
 
 pub struct AnnotationStorage<'a> {
     pool: &'a PgPool,
@@ -12,7 +12,7 @@ impl<'a> AnnotationStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::resources::Annotation>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::resources::Annotation>> {
         let query = format!(
             "SELECT {} FROM annotations annotation WHERE annotation.id = $1",
             project::annotation("annotation")
@@ -25,7 +25,7 @@ impl<'a> AnnotationStorage<'a> {
         Ok(annotation.map(|Json(annotation)| annotation))
     }
 
-    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<types::resources::Annotation>, sqlx::Error> {
+    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<types::resources::Annotation>> {
         let query = format!(
             r#"
             SELECT {}
@@ -48,7 +48,7 @@ impl<'a> AnnotationStorage<'a> {
         message_id: uuid::Uuid,
         task_id: Option<uuid::Uuid>,
         annotation: types::resources::Annotation,
-    ) -> Result<types::resources::Annotation, sqlx::Error> {
+    ) -> Result<types::resources::Annotation> {
         sqlx::query(
             r#"
             INSERT INTO annotations (
@@ -68,10 +68,12 @@ impl<'a> AnnotationStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get_by_id(annotation.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(annotation.id)
+            .await?
+            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn update(&self, annotation: types::resources::Annotation) -> Result<types::resources::Annotation, sqlx::Error> {
+    pub async fn update(&self, annotation: types::resources::Annotation) -> Result<types::resources::Annotation> {
         let result = sqlx::query(
             r#"
             UPDATE annotations
@@ -93,13 +95,15 @@ impl<'a> AnnotationStorage<'a> {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(sqlx::Error::RowNotFound);
+            return Err(sqlx::Error::RowNotFound.into());
         }
 
-        self.get_by_id(annotation.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(annotation.id)
+            .await?
+            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
+    pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {
         let result = sqlx::query("DELETE FROM annotations WHERE id = $1")
             .bind(id)
             .execute(self.pool)

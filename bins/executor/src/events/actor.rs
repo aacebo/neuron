@@ -1,8 +1,9 @@
+use crate::Error;
 use crate::context::EventContext;
 
-pub async fn on_update(ctx: EventContext<'_>, actor: &types::actors::Actor) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn on_event(ctx: EventContext<'_>, actor: &types::actors::Actor) -> ::error::Result<()> {
     let actor_id = actor.id;
-    let result: Result<Option<usize>, Box<dyn std::error::Error>> = async {
+    let result: ::error::Result<Option<usize>> = async {
         let actor = match ctx.storage().actors().get_by_id(actor_id).await? {
             Some(actor) => actor,
             None => {
@@ -57,7 +58,7 @@ pub async fn on_update(ctx: EventContext<'_>, actor: &types::actors::Actor) -> R
         })?;
 
         if artifacts.len() != 1 {
-            return Err(std::io::Error::other(format!(
+            return Err(Error::embedding(format!(
                 "embedding pipeline returned {} artifacts; expected 1",
                 artifacts.len()
             ))
@@ -68,10 +69,10 @@ pub async fn on_update(ctx: EventContext<'_>, actor: &types::actors::Actor) -> R
             .into_iter()
             .next()
             .and_then(|artifact| artifact.vector)
-            .ok_or_else(|| std::io::Error::other("embedding pipeline returned no vector"))?;
+            .ok_or_else(|| Error::embedding("embedding pipeline returned no vector"))?;
 
         if vector.len() != 384 {
-            return Err(std::io::Error::other(format!(
+            return Err(Error::embedding(format!(
                 "embedding pipeline returned {} dimensions; expected 384",
                 vector.len()
             ))

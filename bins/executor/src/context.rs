@@ -49,25 +49,26 @@ impl<'a> EventContext<'a> {
         self.event
     }
 
-    pub async fn ack(&self) -> Result<(), amqp::AMQPError> {
-        Ok(self.delivery.ack(amqp::lapin::options::BasicAckOptions::default()).await?)
+    pub async fn ack(&self) -> ::error::Result<()> {
+        self.delivery
+            .ack(amqp::lapin::options::BasicAckOptions::default())
+            .await
+            .map_err(amqp::Error::from)?;
+        Ok(())
     }
 
-    pub async fn nack(&self) -> Result<(), amqp::AMQPError> {
-        Ok(self
-            .delivery
+    pub async fn nack(&self) -> ::error::Result<()> {
+        self.delivery
             .nack(amqp::lapin::options::BasicNackOptions {
                 multiple: false,
                 requeue: true,
             })
-            .await?)
+            .await
+            .map_err(amqp::Error::from)?;
+        Ok(())
     }
 
-    pub async fn enqueue(
-        &self,
-        key: impl std::fmt::Display,
-        body: impl Into<types::events::Data>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn enqueue(&self, key: impl std::fmt::Display, body: impl Into<types::events::Data>) -> ::error::Result<()> {
         let data = body.into();
         let event = self
             .storage()
@@ -82,7 +83,8 @@ impl<'a> EventContext<'a> {
             )
             .await?;
 
-        Ok(self.socket.produce().enqueue(event).await?)
+        self.socket.produce().enqueue(event).await?;
+        Ok(())
     }
 }
 

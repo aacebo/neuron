@@ -2,7 +2,7 @@ use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::project;
+use crate::{Error, Result, project};
 
 pub struct ArtifactStorage<'a> {
     pool: &'a PgPool,
@@ -13,7 +13,7 @@ impl<'a> ArtifactStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::resources::Artifact>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::resources::Artifact>> {
         let query = format!(
             "SELECT {} FROM artifacts artifact WHERE artifact.id = $1",
             project::artifact("artifact")
@@ -26,7 +26,7 @@ impl<'a> ArtifactStorage<'a> {
         Ok(artifact.map(|Json(artifact)| artifact))
     }
 
-    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<types::resources::Artifact>, sqlx::Error> {
+    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<types::resources::Artifact>> {
         let query = format!(
             r#"
             SELECT {}
@@ -50,7 +50,7 @@ impl<'a> ArtifactStorage<'a> {
         message_id: Option<uuid::Uuid>,
         task_id: Option<uuid::Uuid>,
         artifact: types::resources::Artifact,
-    ) -> Result<types::resources::Artifact, sqlx::Error> {
+    ) -> Result<types::resources::Artifact> {
         let embedding = artifact.embedding.clone().map(Vector::from);
         sqlx::query(
             r#"
@@ -73,10 +73,12 @@ impl<'a> ArtifactStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get_by_id(artifact.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(artifact.id)
+            .await?
+            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn update(&self, artifact: types::resources::Artifact) -> Result<types::resources::Artifact, sqlx::Error> {
+    pub async fn update(&self, artifact: types::resources::Artifact) -> Result<types::resources::Artifact> {
         let embedding = artifact.embedding.clone().map(Vector::from);
         let result = sqlx::query(
             r#"
@@ -98,13 +100,15 @@ impl<'a> ArtifactStorage<'a> {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(sqlx::Error::RowNotFound);
+            return Err(sqlx::Error::RowNotFound.into());
         }
 
-        self.get_by_id(artifact.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(artifact.id)
+            .await?
+            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn update_embedding(&self, id: uuid::Uuid, embedding: Vec<f32>) -> Result<types::resources::Artifact, sqlx::Error> {
+    pub async fn update_embedding(&self, id: uuid::Uuid, embedding: Vec<f32>) -> Result<types::resources::Artifact> {
         let result = sqlx::query(
             r#"
             UPDATE artifacts
@@ -119,13 +123,13 @@ impl<'a> ArtifactStorage<'a> {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(sqlx::Error::RowNotFound);
+            return Err(sqlx::Error::RowNotFound.into());
         }
 
-        self.get_by_id(id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(id).await?.ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
+    pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {
         let result = sqlx::query("DELETE FROM artifacts WHERE id = $1")
             .bind(id)
             .execute(self.pool)

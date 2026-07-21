@@ -50,3 +50,21 @@ impl Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+impl From<Error> for error::Error {
+    fn from(value: Error) -> Self {
+        ::error::new("AI", value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn converts_to_common_error() {
+        let error: error::Error = Error::inference("bad tensor").into();
+        assert_eq!(error.name(), "AI");
+        assert_eq!(error.message(), "inference failed: bad tensor");
+    }
+}

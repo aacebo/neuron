@@ -1,6 +1,7 @@
-use actix_web::{Error, HttpResponse, post, web};
+use ::error::IntoError;
+use actix_web::{HttpResponse, post, web};
 
-use crate::RequestContext;
+use crate::{RequestContext, Result};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct CreateAgent {
@@ -12,11 +13,7 @@ struct CreateAgent {
 }
 
 #[post("/tenants/{tenant_id}/agents")]
-pub async fn create(
-    ctx: RequestContext,
-    tenant_id: web::Path<uuid::Uuid>,
-    body: web::Json<CreateAgent>,
-) -> Result<HttpResponse, Error> {
+pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body: web::Json<CreateAgent>) -> Result<HttpResponse> {
     let body = body.into_inner();
     let actor = ctx
         .storage()
@@ -39,12 +36,10 @@ pub async fn create(
             updated_at: chrono::Utc::now(),
         })
         .await
-        .map_err(actix_web::error::ErrorInternalServerError)?;
+        .map_err(IntoError::into_error)?;
 
     let res = HttpResponse::Created().json(&actor);
-    ctx.enqueue("actor.create", actor)
-        .await
-        .map_err(actix_web::error::ErrorInternalServerError)?;
+    ctx.enqueue("actor.create", actor).await?;
 
     Ok(res)
 }

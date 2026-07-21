@@ -74,7 +74,7 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::*;
-    use crate::resources::ModelId;
+    use crate::models::ModelId;
 
     fn model(repo: &str) -> ModelRef {
         ModelRef::hub(repo.parse::<ModelId>().unwrap())

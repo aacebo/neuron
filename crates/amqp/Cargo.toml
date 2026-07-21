@@ -13,4 +13,5 @@ futures-lite = "2"
 serde = { version = "1", features = ["default", "derive"] }
 serde_json = { version = "1" }
 
+error = { path = "../error" }
 types = { path = "../types" }

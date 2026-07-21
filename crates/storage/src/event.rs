@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::project;
+use crate::{Error, Result, project};
 
 pub struct EventStorage<'a> {
     pool: &'a PgPool,
@@ -12,7 +12,7 @@ impl<'a> EventStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::events::Event>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::events::Event>> {
         let query = format!(
             "SELECT {} FROM events stored_event WHERE stored_event.id = $1",
             project::event("stored_event")
@@ -26,7 +26,7 @@ impl<'a> EventStorage<'a> {
         Ok(event.map(|Json(event)| event))
     }
 
-    pub async fn get_by_trace(&self, trace_id: uuid::Uuid) -> Result<Vec<types::events::Event>, sqlx::Error> {
+    pub async fn get_by_trace(&self, trace_id: uuid::Uuid) -> Result<Vec<types::events::Event>> {
         let query = format!(
             r#"
             SELECT {}
@@ -44,7 +44,7 @@ impl<'a> EventStorage<'a> {
         Ok(events.into_iter().map(|Json(event)| event).collect())
     }
 
-    pub async fn get_by_task(&self, task_id: uuid::Uuid) -> Result<Vec<types::events::Event>, sqlx::Error> {
+    pub async fn get_by_task(&self, task_id: uuid::Uuid) -> Result<Vec<types::events::Event>> {
         let query = format!(
             r#"
             SELECT {}
@@ -72,7 +72,7 @@ impl<'a> EventStorage<'a> {
         message_id: Option<uuid::Uuid>,
         task_id: Option<uuid::Uuid>,
         event: types::events::Event,
-    ) -> Result<types::events::Event, sqlx::Error> {
+    ) -> Result<types::events::Event> {
         sqlx::query(
             r#"
             INSERT INTO events (
@@ -94,6 +94,8 @@ impl<'a> EventStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get_by_id(event.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(event.id)
+            .await?
+            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 }

@@ -3,31 +3,32 @@ use sqlx::postgres::PgPoolOptions;
 
 mod config;
 mod context;
+mod error;
 mod routes;
 
 pub use config::Config;
 pub use context::*;
+pub use error::*;
 
 #[actix_web::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = Config::from_env();
+async fn main() -> ::error::Result<()> {
+    let config = Config::from_env()?;
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&config.database_url)
         .await
-        .expect("Failed to create pool");
+        .map_err(storage::Error::from)?;
 
     sqlx::migrate!("../../crates/storage/migrations")
         .run(&pool)
         .await
-        .expect("Failed to run migrations");
+        .map_err(Error::server)?;
 
     let socket = amqp::new(&config.rabbitmq_url)
         .with_app_id("neuron::api")
         .with_queue("message.create".parse()?)
         .connect()
-        .await
-        .expect("Failed to connect to AMQP");
+        .await?;
 
     let ctx = Context::new(pool, socket);
     println!("Starting server at http://0.0.0.0:{}", config.port);
@@ -45,9 +46,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // .service(routes::messages::get)
         // .service(routes::messages::get_events)
     })
-    .bind(("0.0.0.0", config.port))?
+    .bind(("0.0.0.0", config.port))
+    .map_err(Error::server)?
     .run()
-    .await?;
+    .await
+    .map_err(Error::server)?;
 
     Ok(())
 }

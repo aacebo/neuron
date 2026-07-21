@@ -1,6 +1,6 @@
 use lapin::{options, protocol};
 
-use crate::{AMQPError, Key, Socket};
+use crate::{Key, Result, Socket};
 
 #[derive(Clone)]
 pub struct SocketProducer<'a> {
@@ -16,7 +16,7 @@ impl<'a> SocketProducer<'a> {
         self.socket
     }
 
-    pub async fn enqueue(&self, event: types::events::Event) -> Result<(), AMQPError> {
+    pub async fn enqueue(&self, event: types::events::Event) -> Result<()> {
         let key = event.key.parse::<Key>()?;
         let payload = serde_json::to_vec(&event)?;
         let routing_key = key.to_string();

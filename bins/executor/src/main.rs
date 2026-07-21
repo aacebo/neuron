@@ -4,33 +4,34 @@ use tracing_subscriber::EnvFilter;
 
 mod config;
 mod context;
+mod error;
 mod events;
 
 pub use config::Config;
 pub use context::Context;
+pub use error::*;
 
 use crate::context::EventContext;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ::error::Result<()> {
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("executor=info")))
         .init();
 
-    let config = Config::from_env();
+    let config = Config::from_env()?;
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&config.database_url)
         .await
-        .expect("Failed to create pool");
+        .map_err(storage::Error::from)?;
 
     let socket = amqp::new(&config.rabbitmq_url)
         .with_app_id("neuron::executor")
         .with_queue("actor.create".parse()?)
         .connect()
-        .await
-        .expect("Failed to connect to AMQP");
+        .await?;
 
     let ctx = Context::new(&pool, &socket);
     let mut consumer = socket.consume("actor.create").await?;
@@ -58,17 +59,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let ctx = EventContext::new(&ctx, &delivery, &event);
             let result = match &event.data {
                 types::events::Data::Actor { actor } => match event.key.as_str() {
-                    "actor.create" => events::actor::on_create(ctx, actor).await,
-                    "actor.update" => events::actor::on_update(ctx, actor).await,
+                    "actor.create" | "actor.update" => events::actor::on_event(ctx, actor).await,
                     _ => {
                         tracing::info!(?actor, "unsupported routing key");
                         Ok(())
                     }
                 },
-                _ => ctx
-                    .nack()
-                    .await
-                    .map_err(|error| Box::new(error) as Box<dyn std::error::Error>),
+                _ => ctx.nack().await,
             };
 
             if let Err(error) = result {

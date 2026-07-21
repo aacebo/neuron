@@ -2,7 +2,7 @@ use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::project;
+use crate::{Error, Result, project};
 
 pub struct MessageStorage<'a> {
     pool: &'a PgPool,
@@ -13,7 +13,7 @@ impl<'a> MessageStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::chats::Message>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::chats::Message>> {
         let query = format!(
             "SELECT {} FROM messages message WHERE message.id = $1",
             project::message("message")
@@ -27,7 +27,7 @@ impl<'a> MessageStorage<'a> {
         Ok(message.map(|Json(message)| message))
     }
 
-    pub async fn get_by_task(&self, task_id: uuid::Uuid) -> Result<Option<types::chats::Message>, sqlx::Error> {
+    pub async fn get_by_task(&self, task_id: uuid::Uuid) -> Result<Option<types::chats::Message>> {
         let query = format!(
             r#"
             SELECT {}
@@ -46,7 +46,7 @@ impl<'a> MessageStorage<'a> {
         Ok(message.map(|Json(message)| message))
     }
 
-    pub async fn create(&self, message: types::chats::Message) -> Result<types::chats::Message, sqlx::Error> {
+    pub async fn create(&self, message: types::chats::Message) -> Result<types::chats::Message> {
         let embedding = message.embedding.clone().map(Vector::from);
 
         sqlx::query(
@@ -66,10 +66,12 @@ impl<'a> MessageStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get_by_id(message.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(message.id)
+            .await?
+            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn update(&self, message: types::chats::Message) -> Result<types::chats::Message, sqlx::Error> {
+    pub async fn update(&self, message: types::chats::Message) -> Result<types::chats::Message> {
         let embedding = message.embedding.clone().map(Vector::from);
         let result = sqlx::query(
             r#"
@@ -89,13 +91,15 @@ impl<'a> MessageStorage<'a> {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(sqlx::Error::RowNotFound);
+            return Err(sqlx::Error::RowNotFound.into());
         }
 
-        self.get_by_id(message.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(message.id)
+            .await?
+            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn update_embedding(&self, id: uuid::Uuid, embedding: Vec<f32>) -> Result<types::chats::Message, sqlx::Error> {
+    pub async fn update_embedding(&self, id: uuid::Uuid, embedding: Vec<f32>) -> Result<types::chats::Message> {
         let result = sqlx::query(
             r#"
             UPDATE messages
@@ -110,13 +114,13 @@ impl<'a> MessageStorage<'a> {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(sqlx::Error::RowNotFound);
+            return Err(sqlx::Error::RowNotFound.into());
         }
 
-        self.get_by_id(id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(id).await?.ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
+    pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {
         let result = sqlx::query("DELETE FROM messages WHERE id = $1")
             .bind(id)
             .execute(self.pool)

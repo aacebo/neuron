@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready};
 use actix_web::http::header::HeaderMap;
-use actix_web::{Error, FromRequest, HttpMessage, HttpRequest, web};
+use actix_web::{Error as ActixError, FromRequest, HttpMessage, HttpRequest, web};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use storage::Storage;
@@ -67,11 +67,7 @@ impl RequestContext {
         &self.request_id
     }
 
-    pub async fn enqueue(
-        &self,
-        key: impl std::fmt::Display,
-        body: impl Into<types::events::Data>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn enqueue(&self, key: impl std::fmt::Display, body: impl Into<types::events::Data>) -> ::error::Result<()> {
         let data = body.into();
         let event = self
             .storage()
@@ -86,12 +82,13 @@ impl RequestContext {
             )
             .await?;
 
-        Ok(self.socket.produce().enqueue(event).await?)
+        self.socket.produce().enqueue(event).await?;
+        Ok(())
     }
 }
 
 impl FromRequest for RequestContext {
-    type Error = Error;
+    type Error = crate::Error;
     type Future = Ready<Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _payload: &mut actix_web::dev::Payload) -> Self::Future {
@@ -117,12 +114,12 @@ pub struct RequestContextMiddleware;
 
 impl<S, B> Transform<S, ServiceRequest> for RequestContextMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = ActixError>,
     S::Future: 'static,
     B: 'static,
 {
     type Response = ServiceResponse<B>;
-    type Error = Error;
+    type Error = ActixError;
     type Transform = RequestContextMiddlewareService<S>;
     type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
@@ -138,12 +135,12 @@ pub struct RequestContextMiddlewareService<S> {
 
 impl<S, B> Service<ServiceRequest> for RequestContextMiddlewareService<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = ActixError>,
     S::Future: 'static,
     B: 'static,
 {
     type Response = ServiceResponse<B>;
-    type Error = Error;
+    type Error = ActixError;
     type Future = S::Future;
 
     forward_ready!(service);

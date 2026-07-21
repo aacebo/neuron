@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::project;
+use crate::{Error, Result, project};
 
 pub struct TaskStorage<'a> {
     pool: &'a PgPool,
@@ -12,7 +12,7 @@ impl<'a> TaskStorage<'a> {
         Self { pool }
     }
 
-    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::tasks::Task>, sqlx::Error> {
+    pub async fn get_by_id(&self, id: uuid::Uuid) -> Result<Option<types::tasks::Task>> {
         let query = format!("SELECT {} FROM tasks task WHERE task.id = $1", project::task("task"));
         let task = sqlx::query_scalar::<_, Json<types::tasks::Task>>(&query)
             .bind(id)
@@ -22,7 +22,7 @@ impl<'a> TaskStorage<'a> {
         Ok(task.map(|Json(task)| task))
     }
 
-    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<types::tasks::Task>, sqlx::Error> {
+    pub async fn get_by_message(&self, message_id: uuid::Uuid) -> Result<Vec<types::tasks::Task>> {
         let query = format!(
             r#"
             SELECT {}
@@ -49,7 +49,7 @@ impl<'a> TaskStorage<'a> {
         message_id: Option<uuid::Uuid>,
         agent_id: Option<uuid::Uuid>,
         task: types::tasks::Task,
-    ) -> Result<types::tasks::Task, sqlx::Error> {
+    ) -> Result<types::tasks::Task> {
         sqlx::query(
             r#"
             INSERT INTO tasks (
@@ -82,10 +82,12 @@ impl<'a> TaskStorage<'a> {
         .execute(self.pool)
         .await?;
 
-        self.get_by_id(task.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(task.id)
+            .await?
+            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn update(&self, task: types::tasks::Task) -> Result<types::tasks::Task, sqlx::Error> {
+    pub async fn update(&self, task: types::tasks::Task) -> Result<types::tasks::Task> {
         let result = sqlx::query(
             r#"
             UPDATE tasks
@@ -116,13 +118,15 @@ impl<'a> TaskStorage<'a> {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(sqlx::Error::RowNotFound);
+            return Err(sqlx::Error::RowNotFound.into());
         }
 
-        self.get_by_id(task.id).await?.ok_or(sqlx::Error::RowNotFound)
+        self.get_by_id(task.id)
+            .await?
+            .ok_or_else(|| Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {
+    pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {
         let result = sqlx::query("DELETE FROM tasks WHERE id = $1")
             .bind(id)
             .execute(self.pool)

@@ -1,6 +1,6 @@
 use futures_lite::StreamExt;
 
-use crate::{AMQPError, Socket};
+use crate::{Result, Socket};
 
 #[derive(Clone)]
 pub struct SocketConsumer<'a> {
@@ -17,7 +17,7 @@ impl<'a> SocketConsumer<'a> {
         self.socket
     }
 
-    pub async fn dequeue(&mut self) -> Option<Result<(lapin::message::Delivery, types::events::Event), AMQPError>> {
+    pub async fn dequeue(&mut self) -> Option<Result<(lapin::message::Delivery, types::events::Event)>> {
         let delivery = match self.consumer.next().await? {
             Err(err) => return Some(Err(err.into())),
             Ok(v) => v,
