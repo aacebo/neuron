@@ -2,3 +2,4 @@
 // pub mod console;
 pub mod index;
 // pub mod messages;
+pub mod agents;

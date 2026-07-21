@@ -48,12 +48,13 @@ impl<'a> ActorStorage<'a> {
             sqlx::query(
                 r#"
                 INSERT INTO agents (actor_id, status, description)
-                VALUES ($1, $2, $3)
+                VALUES ($1, $2, $3, $4)
                 "#,
             )
             .bind(actor.id)
             .bind(agent.status.as_str())
             .bind(&agent.description)
+            .bind(Json(&agent.skills))
             .execute(&mut *tx)
             .await?;
         }
@@ -96,7 +97,7 @@ impl<'a> ActorStorage<'a> {
             sqlx::query(
                 r#"
                 INSERT INTO agents (actor_id, status, description)
-                VALUES ($1, $2, $3)
+                VALUES ($1, $2, $3, $4)
                 ON CONFLICT (actor_id) DO UPDATE
                 SET status = EXCLUDED.status,
                     description = EXCLUDED.description
@@ -105,6 +106,7 @@ impl<'a> ActorStorage<'a> {
             .bind(actor.id)
             .bind(agent.status.as_str())
             .bind(&agent.description)
+            .bind(Json(&agent.skills))
             .execute(&mut *tx)
             .await?;
         } else {
@@ -116,37 +118,6 @@ impl<'a> ActorStorage<'a> {
 
         tx.commit().await?;
         self.get(actor.id).await?.ok_or(sqlx::Error::RowNotFound)
-    }
-
-    pub async fn set_skill_versions(
-        &self,
-        actor_id: uuid::Uuid,
-        skill_version_ids: &[uuid::Uuid],
-    ) -> Result<types::actors::Actor, sqlx::Error> {
-        let mut tx = self.pool.begin().await?;
-
-        sqlx::query("DELETE FROM agent_skills WHERE agent_id = $1")
-            .bind(actor_id)
-            .execute(&mut *tx)
-            .await?;
-
-        sqlx::query(
-            r#"
-            INSERT INTO agent_skills (agent_id, skill_version_id, created_at)
-            SELECT $1, skill_version_id, NOW()
-            FROM (
-                SELECT DISTINCT skill_version_id
-                FROM UNNEST($2::UUID[]) AS version(skill_version_id)
-            ) versions
-            "#,
-        )
-        .bind(actor_id)
-        .bind(skill_version_ids.to_vec())
-        .execute(&mut *tx)
-        .await?;
-
-        tx.commit().await?;
-        self.get(actor_id).await?.ok_or(sqlx::Error::RowNotFound)
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool, sqlx::Error> {

@@ -7,7 +7,6 @@ mod chat;
 mod event;
 mod message;
 mod project;
-mod skill;
 mod task;
 
 pub use actor::*;
@@ -16,7 +15,6 @@ pub use artifact::*;
 pub use chat::*;
 pub use event::*;
 pub use message::*;
-pub use skill::*;
 pub use task::*;
 
 pub struct Storage<'a> {
@@ -27,7 +25,6 @@ pub struct Storage<'a> {
     _artifacts: ArtifactStorage<'a>,
     _tasks: TaskStorage<'a>,
     _events: EventStorage<'a>,
-    _skills: SkillStorage<'a>,
 }
 
 impl<'a> Storage<'a> {
@@ -40,7 +37,6 @@ impl<'a> Storage<'a> {
             _artifacts: ArtifactStorage::new(pool),
             _tasks: TaskStorage::new(pool),
             _events: EventStorage::new(pool),
-            _skills: SkillStorage::new(pool),
         }
     }
 
@@ -70,9 +66,5 @@ impl<'a> Storage<'a> {
 
     pub fn events(&self) -> &EventStorage<'a> {
         &self._events
-    }
-
-    pub fn skills(&self) -> &SkillStorage<'a> {
-        &self._skills
     }
 }

@@ -3,7 +3,6 @@ pub mod chats;
 pub mod data;
 pub mod events;
 pub mod resources;
-pub mod skills;
 pub mod tasks;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

@@ -4,22 +4,7 @@ pub(crate) fn agent(alias: &str) -> String {
         jsonb_build_object(
             'status', {alias}.status,
             'description', {alias}.description,
-            'skills', COALESCE((
-                SELECT jsonb_agg(skill.value ORDER BY skill.value->>'name', skill.value->>'id')
-                FROM (
-                    SELECT DISTINCT ON (s.id)
-                        jsonb_build_object(
-                            'id', s.id,
-                            'name', s.name,
-                            'display_name', s.display_name
-                        ) AS value
-                    FROM agent_skills ask
-                    JOIN skill_versions sv ON sv.id = ask.skill_version_id
-                    JOIN skills s ON s.id = sv.skill_id
-                    WHERE ask.agent_id = {alias}.actor_id
-                    ORDER BY s.id
-                ) skill
-            ), '[]'::jsonb)
+            'skills', {alias}.skills,
         )
         "#
     )
@@ -197,45 +182,6 @@ pub(crate) fn event(alias: &str) -> String {
             'key', {alias}.key,
             'data', {alias}.data,
             'created_at', {alias}.created_at
-        )
-        "#
-    )
-}
-
-pub(crate) fn skill(alias: &str) -> String {
-    format!(
-        r#"
-        jsonb_build_object(
-            'id', {alias}.id,
-            'tenant_id', {alias}.tenant_id,
-            'name', {alias}.name,
-            'display_name', {alias}.display_name,
-            'created_at', {alias}.created_at
-        )
-        "#
-    )
-}
-
-pub(crate) fn version(alias: &str) -> String {
-    format!(
-        r#"
-        jsonb_build_object(
-            'id', {alias}.id,
-            'major', {alias}.major,
-            'minor', {alias}.minor,
-            'patch', {alias}.patch,
-            'prerelease', {alias}.prerelease,
-            'status', {alias}.status,
-            'description', {alias}.description,
-            'tags', {alias}.tags,
-            'input', {alias}.input,
-            'output', {alias}.output,
-            'embedding', CASE
-                WHEN {alias}.embedding IS NULL THEN NULL
-                ELSE ({alias}.embedding::text)::jsonb
-            END,
-            'created_at', {alias}.created_at,
-            'updated_at', {alias}.updated_at
         )
         "#
     )

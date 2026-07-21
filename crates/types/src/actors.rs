@@ -1,10 +1,10 @@
-use crate::{data, skills};
+use crate::data;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Actor {
     pub id: uuid::Uuid,
     pub tenant_id: uuid::Uuid,
-    pub external_id: String,
+    pub external_id: Option<String>,
     pub role: Role,
     pub name: String,
     pub display_name: String,
@@ -65,7 +65,7 @@ impl Role {
 pub struct Agent {
     pub status: AgentStatus,
     pub description: String,
-    pub skills: Vec<skills::SkillPartial>,
+    pub skills: Vec<Skill>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -90,4 +90,11 @@ impl AgentStatus {
     pub fn is_offline(self) -> bool {
         matches!(self, Self::Offline)
     }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Skill {
+    pub name: String,
+    pub display_name: String,
+    pub description: Option<String>,
 }

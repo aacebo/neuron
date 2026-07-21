@@ -37,6 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .app_data(web::Data::new(ctx.clone()))
             .wrap(RequestContextMiddleware)
             .service(routes::index::get)
+            .service(routes::agents::connect)
+            .service(routes::agents::create)
         // .service(routes::console::get)
         // .service(routes::console::get_run)
         // .service(routes::chats::messages::create)

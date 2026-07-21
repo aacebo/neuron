@@ -1,4 +1,4 @@
-use crate::{actors, chats, resources, skills, tasks};
+use crate::{actors, chats, resources, tasks};
 
 pub fn new(trace_id: uuid::Uuid, key: impl std::fmt::Display, data: impl Into<Data>) -> Event {
     Event {
@@ -28,7 +28,6 @@ pub enum Data {
     Task { task: tasks::Task },
     Artifact { artifact: resources::Artifact },
     Annotation { annotation: resources::Annotation },
-    Skill { skill: skills::Skill, version: skills::Version },
 }
 
 impl From<actors::Actor> for Data {
@@ -64,11 +63,5 @@ impl From<resources::Artifact> for Data {
 impl From<resources::Annotation> for Data {
     fn from(annotation: resources::Annotation) -> Self {
         Self::Annotation { annotation }
-    }
-}
-
-impl From<(skills::Skill, skills::Version)> for Data {
-    fn from((skill, version): (skills::Skill, skills::Version)) -> Self {
-        Self::Skill { skill, version }
     }
 }
