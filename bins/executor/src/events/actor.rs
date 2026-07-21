@@ -3,7 +3,7 @@ use crate::context::EventContext;
 pub async fn on_create(ctx: EventContext<'_>, actor: &types::actors::Actor) -> Result<(), Box<dyn std::error::Error>> {
     let actor_id = actor.id;
     let result: Result<Option<usize>, Box<dyn std::error::Error>> = async {
-        let actor = match ctx.storage().actors().get(actor_id).await? {
+        let actor = match ctx.storage().actors().get_by_id(actor_id).await? {
             Some(actor) => actor,
             None => {
                 tracing::debug!(reason = "actor_missing", "skipping actor embedding");

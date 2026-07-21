@@ -14,7 +14,13 @@ pub async fn connect(ctx: RequestContext, req: HttpRequest, stream: web::Payload
     )
     .map_err(error::ErrorUnauthorized)?;
 
-    let Some(actor) = ctx.storage().actors().get(agent_id).await.map_err(error::ErrorUnauthorized)? else {
+    let Some(actor) = ctx
+        .storage()
+        .actors()
+        .get_by_id(agent_id)
+        .await
+        .map_err(error::ErrorUnauthorized)?
+    else {
         return Err(error::ErrorUnauthorized("actor not found"));
     };
 
