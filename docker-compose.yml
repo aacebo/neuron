@@ -31,11 +31,11 @@ services:
       timeout: 5s
       retries: 5
 
-  api:
-    container_name: api
+  broker:
+    container_name: broker
     build:
       context: .
-      dockerfile: bins/api/Dockerfile
+      dockerfile: bins/broker/Dockerfile
     ports:
       - 8080:8080
     environment:
@@ -47,11 +47,11 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  executor:
-    container_name: executor
+  worker:
+    container_name: worker
     build:
       context: .
-      dockerfile: bins/executor/Dockerfile
+      dockerfile: bins/worker/Dockerfile
     environment:
       DATABASE_URL: postgres://admin:admin@postgres:5432/main
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672

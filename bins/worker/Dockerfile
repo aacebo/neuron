@@ -16,7 +16,7 @@ COPY crates ./crates
 COPY bins ./bins
 
 # Build release binary
-RUN cargo build --release --package executor
+RUN cargo build --release --package worker
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -29,6 +29,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
-COPY --from=builder /app/target/release/executor /app/executor
+COPY --from=builder /app/target/release/worker /app/worker
 
-CMD ["/app/executor"]
+CMD ["/app/worker"]

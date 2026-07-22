@@ -15,7 +15,7 @@ COPY crates ./crates
 COPY bins ./bins
 
 # Build release binary
-RUN cargo build --release --package api
+RUN cargo build --release --package broker
 
 # Runtime stage
 FROM alpine:latest
@@ -26,6 +26,6 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates libssl3
 
 # Copy binary from builder
-COPY --from=builder /app/target/release/api /app/api
+COPY --from=builder /app/target/release/broker /app/broker
 
-CMD ["/app/api"]
+CMD ["/app/broker"]
