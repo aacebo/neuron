@@ -4,10 +4,12 @@ use crate::{actors, data};
 pub struct Chat {
     pub id: uuid::Uuid,
     pub tenant_id: uuid::Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub created_by: actors::ActorPartial,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub closed_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -15,6 +17,7 @@ pub struct Chat {
 pub struct ChatPartial {
     pub id: uuid::Uuid,
     pub tenant_id: uuid::Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 }
 

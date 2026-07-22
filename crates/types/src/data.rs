@@ -42,6 +42,7 @@ pub enum Content {
         text: String,
     },
     File {
+        #[serde(skip_serializing_if = "Option::is_none")]
         name: Option<String>,
         #[serde(flatten)]
         file: FileContent,

@@ -6,6 +6,7 @@ use crate::data;
 pub struct Actor {
     pub id: uuid::Uuid,
     pub tenant_id: uuid::Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub external_id: Option<String>,
     pub role: Role,
     #[validate(pattern = r"^([a-z0-9_]+)$")]
