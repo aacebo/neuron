@@ -5,6 +5,10 @@ use sqlx::types::Json;
 
 use crate::project;
 
+fn postgres_instances(instances: u32) -> Result<i32> {
+    i32::try_from(instances).map_err(|_| error::sql(format!("agent instance count {instances} exceeds PostgreSQL INT")))
+}
+
 pub struct ActorStorage<'a> {
     pool: &'a PgPool,
 }
@@ -49,16 +53,18 @@ impl<'a> ActorStorage<'a> {
         .await?;
 
         if let Some(agent) = &actor.agent {
+            let instances = postgres_instances(agent.instances)?;
             sqlx::query(
                 r#"
-                INSERT INTO agents (actor_id, status, description, secret, skills)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO agents (actor_id, status, description, secret, instances, skills)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 "#,
             )
             .bind(actor.id)
             .bind(agent.status.as_str())
             .bind(&agent.description)
             .bind(&agent.secret)
+            .bind(instances)
             .bind(Json(&agent.skills))
             .execute(&mut *tx)
             .await?;
@@ -101,14 +107,16 @@ impl<'a> ActorStorage<'a> {
         }
 
         if let Some(agent) = &actor.agent {
+            let instances = postgres_instances(agent.instances)?;
             sqlx::query(
                 r#"
-                INSERT INTO agents (actor_id, status, description, secret, skills)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO agents (actor_id, status, description, secret, instances, skills)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT (actor_id) DO UPDATE
                 SET status = EXCLUDED.status,
                     description = EXCLUDED.description,
                     secret = EXCLUDED.secret,
+                    instances = EXCLUDED.instances,
                     skills = EXCLUDED.skills
                 "#,
             )
@@ -116,6 +124,7 @@ impl<'a> ActorStorage<'a> {
             .bind(agent.status.as_str())
             .bind(&agent.description)
             .bind(&agent.secret)
+            .bind(instances)
             .bind(Json(&agent.skills))
             .execute(&mut *tx)
             .await?;

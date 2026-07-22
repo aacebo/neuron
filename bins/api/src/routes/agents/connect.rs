@@ -7,13 +7,14 @@ use crate::RequestContext;
 
 #[get("/agents/connect")]
 pub async fn connect(ctx: RequestContext, req: HttpRequest, stream: web::Payload) -> Result<HttpResponse> {
-    let agent_id = uuid::Uuid::from_slice(
-        req.headers()
-            .get("X-Agent-Id")
-            .ok_or_else(|| error::http("unauthorized"))?
-            .as_bytes(),
-    )
-    .map_err(error::parse)?;
+    let agent_id = req
+        .headers()
+        .get("X-Agent-Id")
+        .ok_or_else(|| error::http("unauthorized"))?
+        .to_str()
+        .map_err(error::parse)?
+        .parse::<uuid::Uuid>()
+        .map_err(error::parse)?;
 
     let Some(mut actor) = ctx.storage().actors().get_by_id(agent_id).await? else {
         return Err(error::http("unauthorized"));
@@ -30,7 +31,7 @@ pub async fn connect(ctx: RequestContext, req: HttpRequest, stream: web::Payload
     agent.instances += 1;
     agent.status = types::actors::AgentStatus::Online;
     actor = ctx.storage().actors().update(actor).await?;
-    ctx.enqueue("actor.connect", actor).await?;
+    ctx.enqueue("actor.update", actor).await?;
 
     rt::spawn(async move {
         while let Some(message) = stream.next().await {
@@ -59,7 +60,7 @@ pub async fn connect(ctx: RequestContext, req: HttpRequest, stream: web::Payload
         };
 
         actor = ctx.storage().actors().update(actor).await.unwrap();
-        let _ = ctx.enqueue("actor.disconnect", actor).await;
+        let _ = ctx.enqueue("actor.update", actor).await;
     });
 
     Ok(res)
