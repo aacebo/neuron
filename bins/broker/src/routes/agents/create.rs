@@ -1,11 +1,12 @@
-use actix_web::{HttpResponse, post, web};
+use actix_web::{HttpResponse, post};
 use error::Result;
 use serde_valid::Validate;
 
-use crate::RequestContext;
+use crate::{RequestContext, extract};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 struct Request {
+    pub tenant_id: uuid::Uuid,
     pub external_id: Option<String>,
     pub name: String,
     pub description: String,
@@ -18,8 +19,8 @@ struct Response<'a> {
     pub actor: &'a types::actors::Actor,
 }
 
-#[post("/tenants/{tenant_id}/agents")]
-pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body: web::Json<Request>) -> Result<HttpResponse> {
+#[post("/agents")]
+pub async fn create(ctx: RequestContext, body: extract::Json<Request>) -> Result<HttpResponse> {
     let body = body.into_inner();
     let secret = types::secret::new();
     let actor = ctx
@@ -28,7 +29,7 @@ pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body:
         .create(types::actors::Actor {
             id: uuid::Uuid::new_v4(),
             external_id: body.external_id,
-            tenant_id: tenant_id.into_inner(),
+            tenant_id: body.tenant_id,
             role: types::actors::Role::Agent,
             name: body.name,
             agent: Some(types::actors::Agent {

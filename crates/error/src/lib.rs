@@ -36,6 +36,10 @@ pub fn json(message: impl std::fmt::Display) -> Error {
     new("json", message)
 }
 
+pub fn bad_request(message: impl std::fmt::Display) -> Error {
+    new("bad_request", message)
+}
+
 pub fn config(message: impl std::fmt::Display) -> Error {
     new("config", message)
 }
@@ -83,6 +87,24 @@ impl<T: Into<Error>> IntoError for T {
 impl From<serde_json::Error> for Error {
     fn from(value: serde_json::Error) -> Self {
         json(value)
+    }
+}
+
+impl<T: std::error::Error + 'static> From<serde_valid::Error<T>> for Error {
+    fn from(value: serde_valid::Error<T>) -> Self {
+        bad_request(value)
+    }
+}
+
+impl From<serde_valid::validation::Error> for Error {
+    fn from(value: serde_valid::validation::Error) -> Self {
+        bad_request(value)
+    }
+}
+
+impl From<serde_valid::validation::Errors> for Error {
+    fn from(value: serde_valid::validation::Errors) -> Self {
+        bad_request(value)
     }
 }
 

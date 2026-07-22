@@ -18,3 +18,7 @@ CREATE TABLE IF NOT EXISTS agents (
     instances       INT         NOT NULL DEFAULT 0,
     skills          JSONB       NOT NULL DEFAULT '[]'
 );
+
+CREATE UNIQUE INDEX idx_actors_tenant_external_id
+ON actors (tenant_id, external_id)
+WHERE external_id IS NOT NULL;

@@ -5,10 +5,6 @@ use sqlx::types::Json;
 
 use crate::project;
 
-fn postgres_instances(instances: u32) -> Result<i32> {
-    i32::try_from(instances).map_err(|_| error::sql(format!("agent instance count {instances} exceeds PostgreSQL INT")))
-}
-
 pub struct ActorStorage<'a> {
     pool: &'a PgPool,
 }
@@ -22,6 +18,24 @@ impl<'a> ActorStorage<'a> {
         let query = format!("SELECT {} FROM actors actor WHERE actor.id = $1", project::actor("actor"));
         let actor = sqlx::query_scalar::<_, Json<types::actors::Actor>>(&query)
             .bind(id)
+            .fetch_optional(self.pool)
+            .await?;
+
+        Ok(actor.map(|Json(actor)| actor))
+    }
+
+    pub async fn get_by_external_id(&self, tenant_id: uuid::Uuid, external_id: String) -> Result<Option<types::actors::Actor>> {
+        let query = format!(
+            r#"SELECT {}
+            FROM actors actor
+            WHERE actor.tenant_id = $1
+            AND actor.external_id = $2"#,
+            project::actor("actor"),
+        );
+
+        let actor = sqlx::query_scalar::<_, Json<types::actors::Actor>>(&query)
+            .bind(tenant_id)
+            .bind(external_id)
             .fetch_optional(self.pool)
             .await?;
 
@@ -52,7 +66,6 @@ impl<'a> ActorStorage<'a> {
         .await?;
 
         if let Some(agent) = &actor.agent {
-            let instances = postgres_instances(agent.instances)?;
             sqlx::query(
                 r#"
                 INSERT INTO agents (actor_id, status, description, secret, instances, skills)
@@ -63,7 +76,7 @@ impl<'a> ActorStorage<'a> {
             .bind(agent.status.as_str())
             .bind(&agent.description)
             .bind(&agent.secret)
-            .bind(instances)
+            .bind(agent.instances as i32)
             .bind(Json(&agent.skills))
             .execute(&mut *tx)
             .await?;
@@ -104,7 +117,6 @@ impl<'a> ActorStorage<'a> {
         }
 
         if let Some(agent) = &actor.agent {
-            let instances = postgres_instances(agent.instances)?;
             sqlx::query(
                 r#"
                 INSERT INTO agents (actor_id, status, description, secret, instances, skills)
@@ -121,7 +133,7 @@ impl<'a> ActorStorage<'a> {
             .bind(agent.status.as_str())
             .bind(&agent.description)
             .bind(&agent.secret)
-            .bind(instances)
+            .bind(agent.instances as i32)
             .bind(Json(&agent.skills))
             .execute(&mut *tx)
             .await?;

@@ -3,6 +3,7 @@ use sqlx::postgres::PgPoolOptions;
 
 mod config;
 mod context;
+mod extract;
 mod routes;
 
 pub use config::Config;

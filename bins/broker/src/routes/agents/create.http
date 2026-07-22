@@ -1,9 +1,10 @@
 @base = http://localhost:8080
 
-POST {{base}}/tenants/775a179d-9819-42c0-ab47-637bf96fbf7b/agents HTTP/1.1
+POST {{base}}/agents HTTP/1.1
 content-type: application/json
 
 {
+    "tenant_id": "775a179d-9819-42c0-ab47-637bf96fbf7b",
     "name": "test",
     "display_name": "Test",
     "description": "a test agent",
