@@ -70,12 +70,11 @@ impl<'a> EventContext<'a> {
             .storage()
             .events()
             .create(
-                self.event.trace_id,
                 data.actor_id(),
                 data.chat_id(),
                 data.message_id(),
                 data.task_id(),
-                types::events::new(self.event.trace_id, key, data),
+                types::events::new(self.event.tenant_id, self.event.trace_id, key, data),
             )
             .await?;
 

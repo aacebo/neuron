@@ -67,18 +67,22 @@ impl RequestContext {
         &self.request_id
     }
 
-    pub async fn enqueue(&self, key: impl std::fmt::Display, body: impl Into<types::events::Data>) -> ::error::Result<()> {
+    pub async fn enqueue(
+        &self,
+        tenant_id: uuid::Uuid,
+        key: impl std::fmt::Display,
+        body: impl Into<types::events::Data>,
+    ) -> ::error::Result<()> {
         let data = body.into();
         let event = self
             .storage()
             .events()
             .create(
-                self.request_id,
                 data.actor_id(),
                 data.chat_id(),
                 data.message_id(),
                 data.task_id(),
-                types::events::new(self.request_id, key, data),
+                types::events::new(tenant_id, self.request_id, key, data),
             )
             .await?;
 

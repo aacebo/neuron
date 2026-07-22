@@ -187,6 +187,7 @@ pub(crate) fn event(alias: &str) -> String {
         r#"
         jsonb_build_object(
             'id', {alias}.id,
+            'tenant_id', {alias}.tenant_id,
             'trace_id', {alias}.trace_id,
             'key', {alias}.key,
             'data', {alias}.data,

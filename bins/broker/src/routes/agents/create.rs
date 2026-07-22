@@ -53,6 +53,6 @@ pub async fn create(ctx: RequestContext, body: extract::Json<Request>) -> Result
         actor: &actor,
     });
 
-    ctx.enqueue("actor.create", actor).await?;
+    ctx.enqueue(actor.tenant_id, "actor.create", actor).await?;
     Ok(res)
 }

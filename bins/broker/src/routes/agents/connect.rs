@@ -31,7 +31,7 @@ pub async fn connect(ctx: RequestContext, req: HttpRequest, stream: web::Payload
     agent.instances += 1;
     agent.status = types::actors::AgentStatus::Online;
     actor = ctx.storage().actors().update(actor).await?;
-    ctx.enqueue("actor.update", actor).await?;
+    ctx.enqueue(actor.tenant_id, "actor.update", actor).await?;
 
     rt::spawn(async move {
         while let Some(message) = stream.next().await {
@@ -60,7 +60,7 @@ pub async fn connect(ctx: RequestContext, req: HttpRequest, stream: web::Payload
         };
 
         actor = ctx.storage().actors().update(actor).await.unwrap();
-        let _ = ctx.enqueue("actor.update", actor).await;
+        let _ = ctx.enqueue(actor.tenant_id, "actor.update", actor).await;
     });
 
     Ok(res)

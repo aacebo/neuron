@@ -1,8 +1,9 @@
 use crate::{actors, chats, resources, tasks};
 
-pub fn new(trace_id: uuid::Uuid, key: impl std::fmt::Display, data: impl Into<Data>) -> Event {
+pub fn new(tenant_id: uuid::Uuid, trace_id: uuid::Uuid, key: impl std::fmt::Display, data: impl Into<Data>) -> Event {
     Event {
         id: uuid::Uuid::new_v4(),
+        tenant_id,
         trace_id,
         key: key.to_string(),
         data: data.into(),
@@ -13,6 +14,7 @@ pub fn new(trace_id: uuid::Uuid, key: impl std::fmt::Display, data: impl Into<Da
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Event {
     pub id: uuid::Uuid,
+    pub tenant_id: uuid::Uuid,
     pub trace_id: uuid::Uuid,
     pub key: String,
     pub data: Data,

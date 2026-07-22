@@ -64,10 +64,8 @@ impl<'a> EventStorage<'a> {
         Ok(events.into_iter().map(|Json(event)| event).collect())
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         &self,
-        tenant_id: uuid::Uuid,
         actor_id: Option<uuid::Uuid>,
         chat_id: Option<uuid::Uuid>,
         message_id: Option<uuid::Uuid>,
@@ -85,7 +83,7 @@ impl<'a> EventStorage<'a> {
         )
         .bind(event.id)
         .bind(event.trace_id)
-        .bind(tenant_id)
+        .bind(event.tenant_id)
         .bind(actor_id)
         .bind(chat_id)
         .bind(message_id)
