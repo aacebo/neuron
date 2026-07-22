@@ -10,7 +10,3 @@ CREATE TABLE IF NOT EXISTS events (
     data            JSONB           NOT NULL,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
-
-CREATE INDEX IF NOT EXISTS idx_events_trace        ON events(trace_id, level, source);
-CREATE INDEX IF NOT EXISTS idx_events_level_source ON events(level, source);
-CREATE INDEX IF NOT EXISTS idx_events_created_at   ON events(trace_id, created_at DESC);

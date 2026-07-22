@@ -10,3 +10,10 @@ CREATE TABLE IF NOT EXISTS actors (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS agents (
+    actor_id        UUID        PRIMARY KEY REFERENCES actors(id) ON DELETE CASCADE,
+    status          TEXT        NOT NULL, -- online, offline
+    description     TEXT        NOT NULL,
+    skills          JSONB       NOT NULL DEFAULT '[]'
+);

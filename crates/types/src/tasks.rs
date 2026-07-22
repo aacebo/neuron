@@ -2,6 +2,7 @@
 pub struct Task {
     pub id: uuid::Uuid,
     pub trace_id: uuid::Uuid,
+    pub parent_id: Option<uuid::Uuid>,
     pub name: String,
     pub status: TaskStatus,
     pub input: Option<serde_json::Value>,

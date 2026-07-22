@@ -45,7 +45,6 @@ impl<'a> TaskStorage<'a> {
     #[allow(clippy::too_many_arguments)]
     pub async fn create(
         &self,
-        parent_id: Option<uuid::Uuid>,
         chat_id: uuid::Uuid,
         message_id: Option<uuid::Uuid>,
         agent_id: Option<uuid::Uuid>,
@@ -67,7 +66,7 @@ impl<'a> TaskStorage<'a> {
         )
         .bind(task.id)
         .bind(task.trace_id)
-        .bind(parent_id)
+        .bind(task.parent_id)
         .bind(chat_id)
         .bind(message_id)
         .bind(agent_id)

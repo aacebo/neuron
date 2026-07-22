@@ -30,7 +30,7 @@ async fn main() -> ::error::Result<()> {
     let ctx = Context::new(&pool, &socket);
     let mut consumer = socket.consume("actor.create").await?;
 
-    tracing::info!(queue = "actor.create", "waiting for events");
+    tracing::info!("listening...");
 
     while let Some(result) = consumer.dequeue().await {
         let (delivery, event) = match result {

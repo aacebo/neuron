@@ -4,7 +4,7 @@ pub(crate) fn agent(alias: &str) -> String {
         jsonb_build_object(
             'status', {alias}.status,
             'description', {alias}.description,
-            'skills', {alias}.skills,
+            'skills', {alias}.skills
         )
         "#
     )
@@ -165,6 +165,7 @@ pub(crate) fn task(alias: &str) -> String {
         jsonb_build_object(
             'id', {alias}.id,
             'trace_id', {alias}.trace_id,
+            'parent_id', {alias}.parent_id,
             'name', {alias}.name,
             'status', {alias}.status,
             'input', {alias}.input,
