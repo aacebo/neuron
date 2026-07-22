@@ -3,8 +3,7 @@ CREATE TABLE IF NOT EXISTS actors (
     tenant_id       UUID        NOT NULL,
     external_id     TEXT,
     role            TEXT        NOT NULL, -- user, agent
-    name            TEXT        NOT NULL, -- user_name
-    display_name    TEXT        NOT NULL, -- User Name
+    name            TEXT        NOT NULL,
     metadata        JSONB       NOT NULL DEFAULT '{}',
     embedding       VECTOR(384),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),

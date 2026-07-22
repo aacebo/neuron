@@ -19,8 +19,7 @@ pub(crate) fn actor_partial(alias: &str) -> String {
         jsonb_build_object(
             'id', {alias}.id,
             'role', {alias}.role,
-            'name', {alias}.name,
-            'display_name', {alias}.display_name
+            'name', {alias}.name
         ) || COALESCE((
             SELECT {agent}
             FROM agents agent
@@ -40,7 +39,6 @@ pub(crate) fn actor(alias: &str) -> String {
             'external_id', {alias}.external_id,
             'role', {alias}.role,
             'name', {alias}.name,
-            'display_name', {alias}.display_name,
             'metadata', {alias}.metadata,
             'embedding', CASE
                 WHEN {alias}.embedding IS NULL THEN NULL

@@ -34,11 +34,7 @@ async fn main() -> ::error::Result<()> {
             .service(routes::index::get)
             .service(routes::agents::connect)
             .service(routes::agents::create)
-        // .service(routes::console::get)
-        // .service(routes::console::get_run)
-        // .service(routes::chats::messages::create)
-        // .service(routes::messages::get)
-        // .service(routes::messages::get_events)
+            .service(routes::messages::create)
     })
     .bind(("0.0.0.0", config.port))?
     .run()

@@ -7,9 +7,7 @@ use crate::RequestContext;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 struct Request {
     pub external_id: Option<String>,
-    #[validate(pattern = r"^([a-z0-9_]+)$")]
     pub name: String,
-    pub display_name: String,
     pub description: String,
     pub skills: Vec<types::actors::Skill>,
 }
@@ -33,7 +31,6 @@ pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body:
             tenant_id: tenant_id.into_inner(),
             role: types::actors::Role::Agent,
             name: body.name,
-            display_name: body.display_name,
             agent: Some(types::actors::Agent {
                 status: types::actors::AgentStatus::Offline,
                 description: body.description,

@@ -10,26 +10,12 @@ pub async fn on_event(ctx: EventContext<'_>, actor: &types::actors::Actor) -> ::
             }
         };
 
-        if !actor.role.is_agent() {
-            tracing::debug!(reason = "not_agent", "skipping actor embedding");
-            return Ok(None);
-        }
+        let mut lines = vec![format!("Name: {}", actor.name)];
 
-        let agent = match &actor.agent {
-            Some(agent) => agent,
-            None => {
-                tracing::debug!(reason = "agent_details_missing", "skipping actor embedding");
-                return Ok(None);
-            }
-        };
-
-        let mut lines = vec![
-            format!("Name: {}", actor.name),
-            format!("Display name: {}", actor.display_name),
-            format!("Description: {}", agent.description),
-        ];
-
-        if !agent.skills.is_empty() {
+        if let Some(agent) = &actor.agent
+            && !agent.skills.is_empty()
+        {
+            lines.push(format!("Description: {}", agent.description));
             lines.push("Skills:".to_string());
 
             for skill in &agent.skills {

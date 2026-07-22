@@ -35,10 +35,10 @@ impl<'a> ActorStorage<'a> {
         sqlx::query(
             r#"
             INSERT INTO actors (
-                id, tenant_id, external_id, role, name, display_name, metadata,
+                id, tenant_id, external_id, role, name, metadata,
                 embedding, created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
             "#,
         )
         .bind(actor.id)
@@ -46,7 +46,6 @@ impl<'a> ActorStorage<'a> {
         .bind(&actor.external_id)
         .bind(actor.role.as_str())
         .bind(&actor.name)
-        .bind(&actor.display_name)
         .bind(Json(&actor.metadata))
         .bind(embedding)
         .execute(&mut *tx)
@@ -84,9 +83,8 @@ impl<'a> ActorStorage<'a> {
                 external_id = $3,
                 role = $4,
                 name = $5,
-                display_name = $6,
-                metadata = $7,
-                embedding = $8,
+                metadata = $6,
+                embedding = $7,
                 updated_at = NOW()
             WHERE id = $1
             "#,
@@ -96,7 +94,6 @@ impl<'a> ActorStorage<'a> {
         .bind(&actor.external_id)
         .bind(actor.role.as_str())
         .bind(&actor.name)
-        .bind(&actor.display_name)
         .bind(Json(&actor.metadata))
         .bind(embedding)
         .execute(&mut *tx)

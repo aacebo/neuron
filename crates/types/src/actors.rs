@@ -9,9 +9,7 @@ pub struct Actor {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_id: Option<String>,
     pub role: Role,
-    #[validate(pattern = r"^([a-z0-9_]+)$")]
     pub name: String,
-    pub display_name: String,
     #[serde(flatten)]
     pub agent: Option<Agent>,
     pub metadata: data::Metadata,
@@ -25,9 +23,7 @@ pub struct Actor {
 pub struct ActorPartial {
     pub id: uuid::Uuid,
     pub role: Role,
-    #[validate(pattern = r"^([a-z0-9_]+)$")]
     pub name: String,
-    pub display_name: String,
     #[serde(flatten)]
     pub agent: Option<Agent>,
 }
@@ -38,7 +34,6 @@ impl From<Actor> for ActorPartial {
             id: value.id,
             role: value.role,
             name: value.name,
-            display_name: value.display_name,
             agent: value.agent,
         }
     }
