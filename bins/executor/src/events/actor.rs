@@ -1,9 +1,8 @@
 use crate::context::EventContext;
 
 pub async fn on_event(ctx: EventContext<'_>, actor: &types::actors::Actor) -> ::error::Result<()> {
-    let actor_id = actor.id;
     let result: ::error::Result<Option<usize>> = async {
-        let actor = match ctx.storage().actors().get_by_id(actor_id).await? {
+        let actor = match ctx.storage().actors().get_by_id(actor.id).await? {
             Some(actor) => actor,
             None => {
                 tracing::debug!(reason = "actor_missing", "skipping actor embedding");
@@ -77,7 +76,7 @@ pub async fn on_event(ctx: EventContext<'_>, actor: &types::actors::Actor) -> ::
         }
 
         let dimensions = vector.len();
-        ctx.storage().actors().update_embedding(actor_id, vector).await?;
+        ctx.storage().actors().update_embedding(actor.id, vector).await?;
         Ok(Some(dimensions))
     }
     .await;
