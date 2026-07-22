@@ -1,37 +1,30 @@
-use std::collections::BTreeMap;
+use serde_valid::Validate;
 
-#[derive(Default, Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 #[serde(transparent)]
-pub struct Metadata(BTreeMap<String, serde_json::Value>);
+pub struct Contents(#[validate(min_items = 1)] Vec<Content>);
 
-impl Metadata {
-    pub fn new() -> Self {
-        Self::default()
+impl std::ops::Deref for Contents {
+    type Target = Vec<Content>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
+}
 
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+impl std::ops::DerefMut for Contents {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
+}
 
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
+impl std::fmt::Display for Contents {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for content in &self.0 {
+            writeln!(f, "{content}")?;
+        }
 
-    pub fn exists(&self, key: &str) -> bool {
-        self.0.contains_key(key)
-    }
-
-    pub fn get(&self, key: &str) -> Option<&serde_json::Value> {
-        self.0.get(key)
-    }
-
-    pub fn get_mut(&mut self, key: &str) -> Option<&mut serde_json::Value> {
-        self.0.get_mut(key)
-    }
-
-    pub fn set(&mut self, key: impl std::fmt::Display, value: impl Into<serde_json::Value>) -> &mut Self {
-        self.0.insert(key.to_string(), value.into());
-        self
+        Ok(())
     }
 }
 
@@ -71,6 +64,19 @@ impl Content {
         match self {
             Self::Json { json } => Some(json),
             _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for Content {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Text { text } => write!(f, "{text}"),
+            Self::Json { json } => write!(f, "{json}"),
+            Self::File { name, file } => match name {
+                None => write!(f, "{file}"),
+                Some(name) => write!(f, "{name}: {file}"),
+            },
         }
     }
 }

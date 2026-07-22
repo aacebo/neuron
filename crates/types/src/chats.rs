@@ -1,3 +1,5 @@
+use serde_valid::Validate;
+
 use crate::{actors, data};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -21,11 +23,12 @@ pub struct ChatPartial {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 pub struct Message {
     pub id: uuid::Uuid,
     pub chat: ChatPartial,
-    pub content: Vec<data::Content>,
+    #[validate]
+    pub content: data::Contents,
     pub metadata: data::Metadata,
     #[serde(skip)]
     pub embedding: Option<Vec<f32>>,

@@ -5253,6 +5253,7 @@ name = "types"
 version = "0.0.0"
 dependencies = [
  "chrono",
+ "error",
  "rand 0.10.1",
  "serde",
  "serde_json",

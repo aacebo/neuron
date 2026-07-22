@@ -18,3 +18,5 @@ serde = { version = "1", features = ["default", "derive"] }
 url = { version = "2.5", features = ["serde"] }
 uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+
+error = { path = "../error" }

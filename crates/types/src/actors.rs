@@ -24,6 +24,7 @@ pub struct ActorPartial {
     pub id: uuid::Uuid,
     pub role: Role,
     pub name: String,
+    #[validate]
     #[serde(flatten)]
     pub agent: Option<Agent>,
 }
@@ -39,13 +40,14 @@ impl From<Actor> for ActorPartial {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 pub struct Agent {
     pub status: AgentStatus,
     pub description: String,
     #[serde(skip)]
     pub secret: String,
     pub instances: u32,
+    #[validate]
     pub skills: Vec<Skill>,
 }
 

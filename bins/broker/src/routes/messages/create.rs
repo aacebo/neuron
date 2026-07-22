@@ -7,10 +7,11 @@ use crate::{RequestContext, extract};
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 struct Request {
     pub tenant_id: uuid::Uuid,
-    #[validate(min_items = 1)]
-    pub content: Vec<types::data::Content>,
+    #[validate]
+    pub content: types::data::Contents,
     #[serde(default)]
     pub metadata: types::data::Metadata,
+    #[validate]
     pub from: FromUser,
 }
 

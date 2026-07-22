@@ -10,6 +10,8 @@ struct Request {
     pub external_id: Option<String>,
     pub name: String,
     pub description: String,
+    #[validate]
+    #[serde(default)]
     pub skills: Vec<types::actors::Skill>,
 }
 
