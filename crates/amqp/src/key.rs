@@ -2,7 +2,7 @@
 #[serde(rename_all = "snake_case")]
 pub struct Key {
     queue: String,
-    action: Action,
+    action: String,
 }
 
 impl Key {
@@ -24,8 +24,8 @@ impl std::str::FromStr for Key {
         }
 
         Ok(Self {
-            queue: queue.to_owned(),
-            action: action.parse()?,
+            queue: queue.to_string(),
+            action: action.to_string(),
         })
     }
 }
@@ -33,42 +33,5 @@ impl std::str::FromStr for Key {
 impl std::fmt::Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}", &self.queue, &self.action)
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Action {
-    Create,
-    Update,
-    Any,
-}
-
-impl Action {
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::Create => "create",
-            Self::Update => "update",
-            Self::Any => "*",
-        }
-    }
-}
-
-impl std::str::FromStr for Action {
-    type Err = error::Error;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value {
-            "create" => Ok(Self::Create),
-            "update" => Ok(Self::Update),
-            "*" => Ok(Self::Any),
-            _ => Err(error::parse(value)),
-        }
-    }
-}
-
-impl std::fmt::Display for Action {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
     }
 }

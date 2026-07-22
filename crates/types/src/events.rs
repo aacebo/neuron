@@ -30,6 +30,7 @@ pub enum Data {
     Task { task: tasks::Task },
     Artifact { artifact: resources::Artifact },
     Annotation { annotation: resources::Annotation },
+    InboundMessage { message: chats::InboundMessage },
 }
 
 impl Data {
@@ -109,5 +110,11 @@ impl From<resources::Artifact> for Data {
 impl From<resources::Annotation> for Data {
     fn from(annotation: resources::Annotation) -> Self {
         Self::Annotation { annotation }
+    }
+}
+
+impl From<chats::InboundMessage> for Data {
+    fn from(message: chats::InboundMessage) -> Self {
+        Self::InboundMessage { message }
     }
 }

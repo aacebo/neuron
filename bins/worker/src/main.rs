@@ -25,6 +25,7 @@ async fn main() -> ::error::Result<()> {
         .with_queue("actor.create".parse()?)
         .with_queue("actor.update".parse()?)
         .with_queue("message.create".parse()?)
+        .with_queue("message.inbound".parse()?)
         .connect()
         .await?;
 
@@ -54,7 +55,7 @@ async fn main() -> ::error::Result<()> {
             let ctx = EventContext::new(&ctx, &delivery, &event);
             let result = match &event.data {
                 types::events::Data::Actor { actor } => match event.key.as_str() {
-                    "actor.create" | "actor.update" => events::actor::on_event(ctx, actor).await,
+                    "actor.create" | "actor.update" => events::actors::on_event(ctx, actor).await,
                     _ => {
                         tracing::info!(?actor, "unsupported routing key");
                         Ok(())

@@ -7,6 +7,7 @@ use crate::{RequestContext, extract};
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 struct Request {
     pub tenant_id: uuid::Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub subject: Option<String>,
     #[validate]
     pub content: types::data::Contents,
@@ -43,7 +44,7 @@ pub async fn create(ctx: RequestContext, body: extract::Json<Request>) -> Result
                     role: types::actors::Role::User,
                     name: body.from.name,
                     agent: None,
-                    metadata: body.metadata,
+                    metadata: Default::default(),
                     embedding: None,
                     created_at: chrono::Utc::now(),
                     updated_at: chrono::Utc::now(),
@@ -55,20 +56,15 @@ pub async fn create(ctx: RequestContext, body: extract::Json<Request>) -> Result
         }
     };
 
-    let chat = ctx.storage()
-        .chats()
-        .create(types::chats::Chat {
-            id: uuid::Uuid::new_v4(),
-            tenant_id: body.tenant_id,
-            name: body.subject,
-            created_by: from.into(),
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            closed_at: None,
-        })
-        .await?;
+    let message = types::chats::InboundMessage {
+        tenant_id: body.tenant_id,
+        subject: body.subject,
+        content: body.content,
+        metadata: body.metadata,
+        sent_by: from.into(),
+    };
 
-    ctx.enqueue(chat.tenant_id, "chat.create", chat).await?;
+    ctx.enqueue(message.tenant_id, "message.inbound", message.clone()).await?;
 
     // 1. create/update actor.
     // 2. create embedding of message content ??.
@@ -76,5 +72,5 @@ pub async fn create(ctx: RequestContext, body: extract::Json<Request>) -> Result
     // 4. create a new chat with the relevant agents and the from user.
     // 5. on message create, generate message summary/embedding/annotations/artifacts
 
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().json(message))
 }

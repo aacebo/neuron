@@ -32,7 +32,19 @@ pub struct Message {
     pub metadata: data::Metadata,
     #[serde(skip)]
     pub embedding: Option<Vec<f32>>,
+    #[validate]
     pub created_by: actors::ActorPartial,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
+pub struct InboundMessage {
+    pub tenant_id: uuid::Uuid,
+    pub subject: Option<String>,
+    #[validate]
+    pub content: data::Contents,
+    pub metadata: data::Metadata,
+    #[validate]
+    pub sent_by: actors::ActorPartial,
 }

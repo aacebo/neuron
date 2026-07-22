@@ -24,6 +24,7 @@ async fn main() -> ::error::Result<()> {
         .with_queue("actor.create".parse()?)
         .with_queue("actor.update".parse()?)
         .with_queue("message.create".parse()?)
+        .with_queue("message.inbound".parse()?)
         .connect()
         .await?;
 
