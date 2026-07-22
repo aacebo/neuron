@@ -51,13 +51,14 @@ impl<'a> ActorStorage<'a> {
         if let Some(agent) = &actor.agent {
             sqlx::query(
                 r#"
-                INSERT INTO agents (actor_id, status, description, skills)
-                VALUES ($1, $2, $3, $4)
+                INSERT INTO agents (actor_id, status, description, secret, skills)
+                VALUES ($1, $2, $3, $4, $5)
                 "#,
             )
             .bind(actor.id)
             .bind(agent.status.as_str())
             .bind(&agent.description)
+            .bind(&agent.secret)
             .bind(Json(&agent.skills))
             .execute(&mut *tx)
             .await?;
@@ -102,17 +103,19 @@ impl<'a> ActorStorage<'a> {
         if let Some(agent) = &actor.agent {
             sqlx::query(
                 r#"
-                INSERT INTO agents (actor_id, status, description, skills)
-                VALUES ($1, $2, $3, $4)
+                INSERT INTO agents (actor_id, status, description, secret, skills)
+                VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT (actor_id) DO UPDATE
                 SET status = EXCLUDED.status,
                     description = EXCLUDED.description,
+                    secret = EXCLUDED.secret,
                     skills = EXCLUDED.skills
                 "#,
             )
             .bind(actor.id)
             .bind(agent.status.as_str())
             .bind(&agent.description)
+            .bind(&agent.secret)
             .bind(Json(&agent.skills))
             .execute(&mut *tx)
             .await?;

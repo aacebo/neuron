@@ -15,5 +15,7 @@ CREATE TABLE IF NOT EXISTS agents (
     actor_id        UUID        PRIMARY KEY REFERENCES actors(id) ON DELETE CASCADE,
     status          TEXT        NOT NULL, -- online, offline
     description     TEXT        NOT NULL,
+    secret          TEXT        NOT NULL,
+    instances       INT         NOT NULL DEFAULT 0,
     skills          JSONB       NOT NULL DEFAULT '[]'
 );

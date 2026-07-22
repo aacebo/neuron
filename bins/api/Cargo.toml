@@ -10,8 +10,9 @@ actix-ws = "0.4"
 bytes = "1"
 futures-util = "0.3"
 serde_json = "1"
-askama = { version = "0.16", features = ["serde_json"] }
+serde_valid = "2"
 serde = { version = "1", features = ["default", "derive"] }
+askama = { version = "0.16", features = ["serde_json"] }
 uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 sqlx = { version = "0.8", features = ["migrate", "postgres"] }

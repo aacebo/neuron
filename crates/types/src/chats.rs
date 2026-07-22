@@ -24,6 +24,7 @@ pub struct Message {
     pub chat: ChatPartial,
     pub content: Vec<data::Content>,
     pub metadata: data::Metadata,
+    #[serde(skip)]
     pub embedding: Option<Vec<f32>>,
     pub created_by: actors::ActorPartial,
     pub created_at: chrono::DateTime<chrono::Utc>,

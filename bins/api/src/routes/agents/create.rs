@@ -1,11 +1,13 @@
 use actix_web::{HttpResponse, post, web};
 use error::Result;
+use serde_valid::Validate;
 
 use crate::RequestContext;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 struct CreateAgent {
     pub external_id: Option<String>,
+    #[validate(pattern = r"^([a-z0-9_]+)$")]
     pub name: String,
     pub display_name: String,
     pub description: String,
@@ -28,6 +30,8 @@ pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body:
             agent: Some(types::actors::Agent {
                 status: types::actors::AgentStatus::Offline,
                 description: body.description,
+                secret: types::secret::new(),
+                instances: 0,
                 skills: body.skills,
             }),
             metadata: Default::default(),
