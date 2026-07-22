@@ -118,5 +118,6 @@ pub struct Skill {
     #[validate(pattern = r"^([a-z0-9_]+)$")]
     pub name: String,
     pub display_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
