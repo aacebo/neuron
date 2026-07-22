@@ -47,7 +47,6 @@ impl From<Actor> for ActorPartial {
 pub struct Agent {
     pub status: AgentStatus,
     pub description: String,
-    #[serde(skip)]
     pub secret: String,
     pub instances: u32,
     pub skills: Vec<Skill>,

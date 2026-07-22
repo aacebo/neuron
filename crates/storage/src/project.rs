@@ -4,6 +4,8 @@ pub(crate) fn agent(alias: &str) -> String {
         jsonb_build_object(
             'status', {alias}.status,
             'description', {alias}.description,
+            'secret', {alias}.secret,
+            'instances', {alias}.instances,
             'skills', {alias}.skills
         )
         "#
