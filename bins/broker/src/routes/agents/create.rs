@@ -5,7 +5,7 @@ use serde_valid::Validate;
 use crate::RequestContext;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
-struct CreateAgent {
+struct Request {
     pub external_id: Option<String>,
     #[validate(pattern = r"^([a-z0-9_]+)$")]
     pub name: String,
@@ -14,9 +14,16 @@ struct CreateAgent {
     pub skills: Vec<types::actors::Skill>,
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+struct Response<'a> {
+    pub secret: &'a str,
+    pub actor: &'a types::actors::Actor,
+}
+
 #[post("/tenants/{tenant_id}/agents")]
-pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body: web::Json<CreateAgent>) -> Result<HttpResponse> {
+pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body: web::Json<Request>) -> Result<HttpResponse> {
     let body = body.into_inner();
+    let secret = types::secret::new();
     let actor = ctx
         .storage()
         .actors()
@@ -30,7 +37,7 @@ pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body:
             agent: Some(types::actors::Agent {
                 status: types::actors::AgentStatus::Offline,
                 description: body.description,
-                secret: types::secret::new(),
+                secret: secret.clone(),
                 instances: 0,
                 skills: body.skills,
             }),
@@ -41,7 +48,11 @@ pub async fn create(ctx: RequestContext, tenant_id: web::Path<uuid::Uuid>, body:
         })
         .await?;
 
-    let res = HttpResponse::Created().json(&actor);
+    let res = HttpResponse::Created().json(Response {
+        secret: &secret,
+        actor: &actor,
+    });
+
     ctx.enqueue("actor.create", actor).await?;
     Ok(res)
 }
