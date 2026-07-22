@@ -7,6 +7,7 @@ use crate::{RequestContext, extract};
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 struct Request {
     pub tenant_id: uuid::Uuid,
+    pub subject: Option<String>,
     #[validate]
     pub content: types::data::Contents,
     #[serde(default)]
@@ -24,7 +25,7 @@ struct FromUser {
 #[post("/messages")]
 pub async fn create(ctx: RequestContext, body: extract::Json<Request>) -> Result<HttpResponse> {
     let body = body.into_inner();
-    let _from = match ctx
+    let from = match ctx
         .storage()
         .actors()
         .get_by_external_id(body.tenant_id, body.from.id.clone())
@@ -53,6 +54,21 @@ pub async fn create(ctx: RequestContext, body: extract::Json<Request>) -> Result
             actor
         }
     };
+
+    let chat = ctx.storage()
+        .chats()
+        .create(types::chats::Chat {
+            id: uuid::Uuid::new_v4(),
+            tenant_id: body.tenant_id,
+            name: body.subject,
+            created_by: from.into(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            closed_at: None,
+        })
+        .await?;
+
+    ctx.enqueue(chat.tenant_id, "chat.create", chat).await?;
 
     // 1. create/update actor.
     // 2. create embedding of message content ??.
