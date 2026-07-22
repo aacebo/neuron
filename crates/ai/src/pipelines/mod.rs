@@ -5,10 +5,11 @@ pub mod generate;
 
 pub use cache::{Cache, Key};
 pub use common::Batch;
+use error::Result;
 
 use crate::models::{GenOpts, Model, ModelId, ModelRef, Provider};
+use crate::tasks;
 use crate::types::{Annotation, Artifact, ArtifactContent, Entity, Offset};
-use crate::{Error, Result, tasks};
 
 static MODELS: std::sync::LazyLock<Cache<crate::models::Model>> = std::sync::LazyLock::new(Cache::new);
 const TOP_N: usize = 5;
@@ -59,7 +60,7 @@ impl ModelArgs {
         let provider: Provider = provider.parse()?;
         let id: ModelId = self
             .model
-            .ok_or(Error::inference("model is required when provider is set"))?
+            .ok_or(error::ai("model is required when provider is set"))?
             .parse()?;
 
         Ok(ModelRef::remote(provider, id).base_url(self.base_url))

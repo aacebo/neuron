@@ -11,8 +11,12 @@ doctest = false
 workspace = true
 
 [dependencies]
+rand = { version = "0.10", features = [] }
+serde_json = { version = "1" }
+serde_valid = { version = "2" }
+serde = { version = "1", features = ["default", "derive"] }
 url = { version = "2.5", features = ["serde"] }
 uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-serde = { version = "1", features = ["default", "derive"] }
-serde_json = { version = "1" }
+
+error = { path = "../error" }

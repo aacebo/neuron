@@ -1,15 +1,15 @@
 services:
-  api:
+  broker:
     build:
       target: builder
     working_dir: /app
     volumes:
       - .:/app
-      - api-target:/app/target
+      - broker-target:/app/target
       - cargo-registry:/usr/local/cargo/registry
-    command: cargo run --release --package api
+    command: cargo run --release --package broker
 
-  executor:
+  worker:
     build:
       target: builder
     working_dir: /app
@@ -17,12 +17,12 @@ services:
       NEURON_CACHE: /app/.cache
     volumes:
       - .:/app
-      - executor-target:/app/target
+      - worker-target:/app/target
       - cargo-registry:/usr/local/cargo/registry
       - ./.cache:/app/.cache
-    command: cargo run --release --package executor
+    command: cargo run --release --package worker
 
 volumes:
-  api-target:
-  executor-target:
+  broker-target:
+  worker-target:
   cargo-registry:

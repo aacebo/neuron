@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use candle_core::{DType, Device};
 pub use capability::{Classify, Context, Embed, GenOpts, Generate, Label, TokenClassify, Word};
+use error::{Error, Result};
 pub use loader::Loader;
 pub use model_id::ModelId;
 pub use provider::Provider;
@@ -23,7 +24,6 @@ use crate::clients::hf::HuggingFace;
 use crate::clients::http::Http;
 use crate::clients::openai::OpenAI;
 use crate::resources::{Repository, Resource, Uri};
-use crate::{Error, Result};
 
 pub trait Forward: Send + Sync {
     type Input;
@@ -155,7 +155,7 @@ impl Model {
                 }
             }
             other => {
-                return Err(Error::Load(format!("{name} has unsupported architecture `{other}`")));
+                return Err(error::ai(format!("{name} has unsupported architecture `{other}`")));
             }
         };
 
@@ -204,7 +204,7 @@ impl Model {
     }
 
     pub fn cannot(&self, capability: &str) -> Error {
-        Error::Inference(format!("{} cannot {capability}", self.name))
+        error::ai(format!("{} cannot {capability}", self.name))
     }
 }
 
@@ -337,7 +337,7 @@ impl ModelRef {
     pub fn local_or_err(&self) -> Result<&LocalModel> {
         match self {
             Self::Local(model) => Ok(model),
-            Self::Remote(remote) => Err(Error::Load(format!("{remote} is a remote model and has no weights"))),
+            Self::Remote(remote) => Err(error::ai(format!("{remote} is a remote model and has no weights"))),
         }
     }
 }

@@ -7,7 +7,8 @@ mod keybert;
 mod scorer;
 mod stopwords;
 
-use crate::Result;
+use error::Result;
+
 use crate::models::{Classify, Context, Embed, GenOpts, Generate, TokenClassify};
 use crate::types::{Entity, Keyword, Polarity, Sentiment};
 

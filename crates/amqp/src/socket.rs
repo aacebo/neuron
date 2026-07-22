@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::{AMQPError, Key, SocketConsumer, SocketProducer};
+use error::Result;
+
+use crate::{Key, SocketConsumer, SocketProducer};
 
 #[derive(Clone)]
 pub struct Socket {
@@ -28,9 +30,11 @@ impl Socket {
         self.queues.get(&key)
     }
 
-    pub async fn consume(&self, key: Key) -> Result<SocketConsumer<'_>, AMQPError> {
+    pub async fn consume(&self, key: &str) -> Result<SocketConsumer<'_>> {
+        let key = key.parse()?;
+
         if !self.queues.contains_key(&key) {
-            return Err(AMQPError::custom("not-found", "queue not found"));
+            return Err(error::amqp(format!("queue {key} not found")));
         }
 
         let consumer_tag = format!("{}::{}", self.app_id(), key);
@@ -77,7 +81,7 @@ impl SocketOptions {
         self
     }
 
-    pub async fn connect(self) -> Result<Socket, AMQPError> {
+    pub async fn connect(self) -> Result<Socket> {
         let conn = lapin::Connection::connect(&self.uri, lapin::ConnectionProperties::default()).await?;
         let channel = conn.create_channel().await?;
         let mut queues = HashMap::new();

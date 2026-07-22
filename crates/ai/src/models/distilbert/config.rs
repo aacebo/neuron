@@ -1,7 +1,7 @@
 use candle_transformers::models::distilbert;
+use error::Result;
 
 use crate::models::Architecture;
-use crate::{Error, Result};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
@@ -59,8 +59,8 @@ impl Config {
     }
 
     pub fn to_candle(&self) -> Result<distilbert::Config> {
-        let json = serde_json::to_value(self).map_err(Error::load)?;
-        serde_json::from_value(json).map_err(Error::load)
+        let json = serde_json::to_value(self)?;
+        Ok(serde_json::from_value(json)?)
     }
 }
 

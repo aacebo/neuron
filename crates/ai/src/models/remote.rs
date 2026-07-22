@@ -1,6 +1,7 @@
+use error::Result;
+
 use super::RemoteModel;
 use super::capability::{Classify, Context, Embed, GenOpts, Generate, Label, TokenClassify};
-use crate::Result;
 use crate::tasks::anchor;
 use crate::types::Entity;
 

@@ -1,7 +1,6 @@
 use candle_core::{Device, Tensor};
+use error::Result;
 use tokenizers::Encoding;
-
-use crate::{Error, Result};
 
 pub struct Batch {
     pub ids: Tensor,
@@ -31,14 +30,14 @@ impl Batch {
         let shape = (encodings.len(), width);
 
         Ok(Self {
-            ids: Tensor::from_vec(ids, shape, device).map_err(Error::inference)?,
-            mask: Tensor::from_vec(mask, shape, device).map_err(Error::inference)?,
+            ids: Tensor::from_vec(ids, shape, device)?,
+            mask: Tensor::from_vec(mask, shape, device)?,
         })
     }
 
     /// The inverse of `mask`: 1 where a position must be IGNORED. DistilBert wants this form.
     pub fn padding(&self) -> Result<Tensor> {
-        let ones = self.mask.ones_like().map_err(Error::inference)?;
-        (ones - &self.mask).map_err(Error::inference)
+        let ones = self.mask.ones_like()?;
+        Ok((ones - &self.mask)?)
     }
 }

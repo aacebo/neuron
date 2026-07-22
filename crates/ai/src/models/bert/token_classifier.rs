@@ -1,12 +1,12 @@
 use candle_core::Tensor;
 use candle_nn::{Linear, Module, VarBuilder, ops};
+use error::Result;
 
 use super::config::Config;
 use super::model::Bert;
 use crate::models::{Context, Forward, TokenClassify, Word};
 use crate::tasks::{aggregation, bioes};
 use crate::types::Entity;
-use crate::{Error, Result};
 
 pub struct TokenClassifier {
     bert: Bert,
@@ -17,7 +17,7 @@ pub struct TokenClassifier {
 impl TokenClassifier {
     pub fn new(vars: VarBuilder, config: &Config) -> Result<Self> {
         let labels = config.labels()?;
-        let classifier = candle_nn::linear(config.hidden_size, labels.len(), vars.pp("classifier")).map_err(Error::load)?;
+        let classifier = candle_nn::linear(config.hidden_size, labels.len(), vars.pp("classifier"))?;
 
         Ok(Self {
             bert: Bert::new(vars, config)?,
@@ -37,7 +37,7 @@ impl TokenClassifier {
         self.classifier
             .forward(&hidden)
             .and_then(|logits| ops::softmax(&logits, 2))
-            .map_err(Error::inference)
+            .map_err(error::ai)
     }
 }
 
@@ -79,13 +79,12 @@ impl TokenClassifier {
         }
 
         let shape = (1, ids.len());
-        let input = Tensor::from_slice(ids, shape, cx.device()).map_err(Error::inference)?;
-        let mask = Tensor::from_slice(encoding.get_attention_mask(), shape, cx.device()).map_err(Error::inference)?;
+        let input = Tensor::from_slice(ids, shape, cx.device())?;
+        let mask = Tensor::from_slice(encoding.get_attention_mask(), shape, cx.device())?;
         let probs = self
             .forward(&input, &mask)?
             .squeeze(0)
-            .and_then(|probs| probs.to_vec2::<f32>())
-            .map_err(Error::inference)?;
+            .and_then(|probs| probs.to_vec2::<f32>())?;
 
         aggregation::words(&probs, &encoding, self.labels())
     }

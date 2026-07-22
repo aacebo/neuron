@@ -1,9 +1,9 @@
+use error::Result;
 use tokenizers::Encoding;
 
 use super::char_offset;
 use crate::models::Word;
 use crate::types::{Entity, Offset};
-use crate::{Error, Result};
 
 /// Merges sub-word pieces back into whole words, averaging their scores. The label of a word's
 /// first piece wins, matching HuggingFace's aggregation.
@@ -106,11 +106,11 @@ fn best(row: &[f32], labels: &[String]) -> Result<(String, f32)> {
         .iter()
         .enumerate()
         .max_by(|(_, a), (_, b)| a.total_cmp(b))
-        .ok_or_else(|| Error::Inference("empty logits row".to_string()))?;
+        .ok_or_else(|| error::ai("empty logits row".to_string()))?;
 
     let label = labels
         .get(index)
-        .ok_or_else(|| Error::Inference(format!("no label for index {index}")))?;
+        .ok_or_else(|| error::ai(format!("no label for index {index}")))?;
 
     Ok((label.clone(), *score))
 }

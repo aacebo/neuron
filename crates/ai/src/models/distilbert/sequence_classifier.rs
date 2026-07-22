@@ -1,10 +1,10 @@
 use candle_core::{IndexOp, Tensor};
 use candle_nn::{Linear, Module, VarBuilder, ops};
+use error::Result;
 
 use super::config::Config;
 use super::model::DistilBert;
 use crate::models::{Classify, Context, Forward, Label};
-use crate::{Error, Result};
 
 const LABELS: usize = 2;
 
@@ -20,22 +20,21 @@ impl SequenceClassifier {
 
         Ok(Self {
             distilbert: DistilBert::new(vars.clone(), config)?,
-            pre_classifier: candle_nn::linear(hidden, hidden, vars.pp("pre_classifier")).map_err(Error::load)?,
-            classifier: candle_nn::linear(hidden, LABELS, vars.pp("classifier")).map_err(Error::load)?,
+            pre_classifier: candle_nn::linear(hidden, hidden, vars.pp("pre_classifier"))?,
+            classifier: candle_nn::linear(hidden, LABELS, vars.pp("classifier"))?,
         })
     }
 
     pub fn forward(&self, ids: &Tensor, padding: &Tensor) -> Result<Vec<Vec<f32>>> {
         let hidden = self.distilbert.forward(ids, padding)?;
-        let pooled = hidden.i((.., 0)).map_err(Error::inference)?;
-
+        let pooled = hidden.i((.., 0))?;
         self.pre_classifier
             .forward(&pooled)
             .and_then(|v| v.relu())
             .and_then(|v| self.classifier.forward(&v))
             .and_then(|logits| ops::softmax(&logits, 1))
             .and_then(|probs| probs.to_vec2::<f32>())
-            .map_err(Error::inference)
+            .map_err(error::ai)
     }
 }
 

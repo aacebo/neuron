@@ -1,0 +1,23 @@
+[package]
+name = "worker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["default", "derive"] }
+uuid = { version = "1.19", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+sqlx = { version = "0.8", features = ["postgres"] }
+tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+ai = { path = "../../crates/ai" }
+amqp = { path = "../../crates/amqp" }
+error = { path = "../../crates/error", features = ["amqp", "storage"] }
+storage = { path = "../../crates/storage" }
+types = { path = "../../crates/types" }

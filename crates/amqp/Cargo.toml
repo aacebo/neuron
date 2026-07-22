@@ -10,7 +10,8 @@ doctest = false
 [dependencies]
 lapin = "2"
 futures-lite = "2"
-uuid = { version = "1.19", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["default", "derive"] }
 serde_json = { version = "1" }
+
+error = { path = "../error", features = ["amqp"] }
+types = { path = "../types" }

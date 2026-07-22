@@ -1,0 +1,16 @@
+@base = http://localhost:8080
+
+POST {{base}}/messages HTTP/1.1
+content-type: application/json
+
+{
+    "tenant_id": "775a179d-9819-42c0-ab47-637bf96fbf7b",
+    "content": [{
+        "type": "text",
+        "text": "tests"
+    }],
+    "from": {
+        "id": "12345",
+        "name": "User"
+    }
+}

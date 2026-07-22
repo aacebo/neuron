@@ -1,26 +1,38 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct Key {
-    entity: String,
+    queue: String,
     action: Action,
 }
 
 impl Key {
-    pub fn new(entity: &str, action: Action) -> Self {
-        Self {
-            entity: entity.to_string(),
-            action,
-        }
-    }
-
     pub fn exchange(&self) -> &str {
         "events"
     }
 }
 
+impl std::str::FromStr for Key {
+    type Err = error::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let (queue, action) = value
+            .split_once('.')
+            .ok_or_else(|| error::parse(format!("invalid amqp routing key {value}")))?;
+
+        if queue.is_empty() || action.is_empty() || action.contains('.') {
+            return Err(error::parse(value));
+        }
+
+        Ok(Self {
+            queue: queue.to_owned(),
+            action: action.parse()?,
+        })
+    }
+}
+
 impl std::fmt::Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}", &self.entity, &self.action)
+        write!(f, "{}.{}", &self.queue, &self.action)
     }
 }
 
@@ -29,19 +41,34 @@ impl std::fmt::Display for Key {
 pub enum Action {
     Create,
     Update,
+    Any,
 }
 
 impl Action {
-    pub fn name(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             Self::Create => "create",
             Self::Update => "update",
+            Self::Any => "*",
+        }
+    }
+}
+
+impl std::str::FromStr for Action {
+    type Err = error::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "create" => Ok(Self::Create),
+            "update" => Ok(Self::Update),
+            "*" => Ok(Self::Any),
+            _ => Err(error::parse(value)),
         }
     }
 }
 
 impl std::fmt::Display for Action {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
+        write!(f, "{}", self.as_str())
     }
 }

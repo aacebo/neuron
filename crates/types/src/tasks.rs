@@ -2,14 +2,21 @@
 pub struct Task {
     pub id: uuid::Uuid,
     pub trace_id: uuid::Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_id: Option<uuid::Uuid>,
     pub name: String,
     pub status: TaskStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub input: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<serde_json::Value>,
     pub attempts: i32,
     pub max_attempts: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub started_at: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ended_at: Option<chrono::DateTime<chrono::Utc>>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
@@ -85,14 +92,20 @@ pub enum TaskStatus {
     Success,
 }
 
+impl TaskStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Queued => "queued",
+            Self::Running => "running",
+            Self::Failure => "failure",
+            Self::Cancelled => "cancelled",
+            Self::Success => "success",
+        }
+    }
+}
+
 impl std::fmt::Display for TaskStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Queued => write!(f, "queued"),
-            Self::Running => write!(f, "running"),
-            Self::Success => write!(f, "success"),
-            Self::Failure => write!(f, "failure"),
-            Self::Cancelled => write!(f, "cancelled"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }

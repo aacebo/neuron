@@ -1,10 +1,10 @@
 use candle_core::{DType, Tensor};
 use candle_nn::VarBuilder;
+use error::Result;
 
 use super::config::Config;
 use super::model::Bert;
 use crate::models::{Context, Embed, Forward};
-use crate::{Error, Result};
 
 pub struct Embedder {
     bert: Bert,
@@ -25,24 +25,17 @@ impl Embedder {
 }
 
 fn pool(hidden: &Tensor, mask: &Tensor) -> Result<Tensor> {
-    let mask = mask
-        .to_dtype(DType::F32)
-        .and_then(|mask| mask.unsqueeze(2))
-        .map_err(Error::inference)?;
+    let mask = mask.to_dtype(DType::F32).and_then(|mask| mask.unsqueeze(2))?;
 
-    let summed = hidden.broadcast_mul(&mask).and_then(|v| v.sum(1)).map_err(Error::inference)?;
-    let counts = mask.sum(1).map_err(Error::inference)?;
-    summed.broadcast_div(&counts).map_err(Error::inference)
+    let summed = hidden.broadcast_mul(&mask).and_then(|v| v.sum(1))?;
+    let counts = mask.sum(1)?;
+    summed.broadcast_div(&counts).map_err(error::ai)
 }
 
 fn normalize(v: &Tensor) -> Result<Tensor> {
-    let norm = v
-        .sqr()
-        .and_then(|v| v.sum_keepdim(1))
-        .and_then(|v| v.sqrt())
-        .map_err(Error::inference)?;
+    let norm = v.sqr().and_then(|v| v.sum_keepdim(1)).and_then(|v| v.sqrt())?;
 
-    v.broadcast_div(&norm).map_err(Error::inference)
+    v.broadcast_div(&norm).map_err(error::ai)
 }
 
 impl Forward for Embedder {
@@ -61,9 +54,6 @@ impl Embed for Embedder {
         }
 
         let batch = cx.encode(text)?;
-
-        self.forward(&batch.ids, &batch.mask)?
-            .to_vec2::<f32>()
-            .map_err(Error::inference)
+        self.forward(&batch.ids, &batch.mask)?.to_vec2::<f32>().map_err(error::ai)
     }
 }

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use candle_transformers::models::bert;
+use error::Result;
 
 use crate::models::Architecture;
-use crate::{Error, Result};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
@@ -104,11 +104,11 @@ impl Config {
         for (index, label) in &self.id2label {
             let index: usize = index
                 .parse()
-                .map_err(|_| Error::Load(format!("invalid label index: {index}")))?;
+                .map_err(|_| error::ai(format!("invalid label index: {index}")))?;
 
             let slot = labels
                 .get_mut(index)
-                .ok_or_else(|| Error::Load(format!("label index out of range: {index}")))?;
+                .ok_or_else(|| error::ai(format!("label index out of range: {index}")))?;
 
             *slot = label.clone();
         }
