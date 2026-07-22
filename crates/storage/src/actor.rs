@@ -119,12 +119,11 @@ impl<'a> ActorStorage<'a> {
         if let Some(agent) = &actor.agent {
             sqlx::query(
                 r#"
-                INSERT INTO agents (actor_id, status, description, secret, instances, skills)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO agents (actor_id, status, description, instances, skills)
+                VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT (actor_id) DO UPDATE
                 SET status = EXCLUDED.status,
                     description = EXCLUDED.description,
-                    secret = EXCLUDED.secret,
                     instances = EXCLUDED.instances,
                     skills = EXCLUDED.skills
                 "#,
@@ -132,7 +131,6 @@ impl<'a> ActorStorage<'a> {
             .bind(actor.id)
             .bind(agent.status.as_str())
             .bind(&agent.description)
-            .bind(&agent.secret)
             .bind(agent.instances as i32)
             .bind(Json(&agent.skills))
             .execute(&mut *tx)
@@ -159,6 +157,27 @@ impl<'a> ActorStorage<'a> {
         )
         .bind(id)
         .bind(Vector::from(embedding))
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(sqlx::Error::RowNotFound.into());
+        }
+
+        Ok(self.get_by_id(id).await?.ok_or(sqlx::Error::RowNotFound)?)
+    }
+
+    pub async fn update_secret(&self, id: uuid::Uuid, value: impl std::fmt::Display) -> Result<types::actors::Actor> {
+        let result = sqlx::query(
+            r#"
+            UPDATE actors
+            SET secret = $2,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .bind(value.to_string())
         .execute(self.pool)
         .await?;
 

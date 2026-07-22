@@ -20,7 +20,9 @@ async fn main() -> ::error::Result<()> {
         .map_err(error::sql)?;
 
     let socket = amqp::new(&config.rabbitmq_url)
-        .with_app_id("neuron::api")
+        .with_app_id("neuron::broker")
+        .with_queue("actor.create".parse()?)
+        .with_queue("actor.update".parse()?)
         .with_queue("message.create".parse()?)
         .connect()
         .await?;

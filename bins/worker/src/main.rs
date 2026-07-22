@@ -15,15 +15,16 @@ use crate::context::EventContext;
 async fn main() -> ::error::Result<()> {
     tracing_subscriber::fmt()
         .compact()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("executor=info")))
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("worker=info")))
         .init();
 
     let config = Config::from_env()?;
     let pool = PgPoolOptions::new().max_connections(5).connect(&config.database_url).await?;
-
     let socket = amqp::new(&config.rabbitmq_url)
-        .with_app_id("neuron::executor")
+        .with_app_id("neuron::worker")
         .with_queue("actor.create".parse()?)
+        .with_queue("actor.update".parse()?)
+        .with_queue("message.create".parse()?)
         .connect()
         .await?;
 
