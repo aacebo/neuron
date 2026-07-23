@@ -405,6 +405,38 @@ exchange cannot be redeclared as a topic exchange, so reset only that AMQP topol
 
 Do not use `docker compose down -v` for this migration because it can remove unrelated persisted data.
 
+### Development Event Console
+
+The broker can expose a tenant-scoped development console at `http://localhost:8080/console`:
+
+```text
+CONSOLE_ENABLED=true
+CONSOLE_TENANT_ID=775a179d-9819-42c0-ab47-637bf96fbf7b
+```
+
+`CONSOLE_TENANT_ID` is required when the console is enabled. The development Compose override enables it for
+the fixture tenant. The console replays persisted events and follows live PostgreSQL notifications; the browser
+reduces those raw domain events into traces, agent presence, metadata, and topology. Resetting local console
+state clears only its IndexedDB event cache.
+
+Agent WebSocket clients must authenticate with `X-Agent-Id` and `X-Agent-Secret` headers. Browser clients send
+the same credentials as their first text frame:
+
+```json
+{
+  "type": "authenticate",
+  "agent_id": "8ed43ba2-1e3e-40ac-a454-1eac00da710e",
+  "secret": "<agent secret>"
+}
+```
+
+The secret is never included in persisted actor events. The console stores a user-entered secret only in
+browser `sessionStorage`.
+
+Compose starts a new conversation. Messages sent from Live Chat include the established `chat_id`; the broker
+accepts them only from existing chat members in the configured tenant, and the worker appends them without
+rerunning agent selection or creating another chat.
+
 ## Task Model
 
 Tasks have a stable identity and lifecycle.

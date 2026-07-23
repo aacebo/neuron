@@ -98,6 +98,7 @@ impl<'a> MessageStorage<'a> {
 
     pub async fn create(&self, message: types::chats::Message) -> Result<types::chats::Message> {
         let embedding = message.embedding.clone().map(Vector::from);
+        let mut tx = self.pool.begin().await?;
 
         sqlx::query(
             r#"
@@ -113,9 +114,15 @@ impl<'a> MessageStorage<'a> {
         .bind(Json(&message.metadata))
         .bind(embedding)
         .bind(message.created_by.id)
-        .execute(self.pool)
+        .execute(&mut *tx)
         .await?;
 
+        sqlx::query("UPDATE chats SET updated_at = NOW() WHERE id = $1")
+            .bind(message.chat.id)
+            .execute(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
         self.get_by_id(message.id)
             .await?
             .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))

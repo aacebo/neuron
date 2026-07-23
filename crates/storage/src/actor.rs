@@ -42,6 +42,15 @@ impl<'a> ActorStorage<'a> {
         Ok(actor.map(|Json(actor)| actor))
     }
 
+    pub async fn get_secret(&self, id: uuid::Uuid) -> Result<Option<String>> {
+        let secret = sqlx::query_scalar("SELECT secret FROM agents WHERE actor_id = $1")
+            .bind(id)
+            .fetch_optional(self.pool)
+            .await?;
+
+        Ok(secret)
+    }
+
     pub async fn search(
         &self,
         tenant_id: uuid::Uuid,
@@ -233,6 +242,65 @@ impl<'a> ActorStorage<'a> {
         }
 
         Ok(self.get_by_id(id).await?.ok_or(sqlx::Error::RowNotFound)?)
+    }
+
+    pub async fn connect(&self, id: uuid::Uuid) -> Result<Option<types::actors::Actor>> {
+        let mut tx = self.pool.begin().await?;
+        let result = sqlx::query(
+            r#"
+            UPDATE agents
+            SET instances = instances + 1,
+                status = 'online'
+            WHERE actor_id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Ok(None);
+        }
+
+        sqlx::query("UPDATE actors SET updated_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+        self.get_by_id(id).await
+    }
+
+    pub async fn disconnect(&self, id: uuid::Uuid) -> Result<Option<types::actors::Actor>> {
+        let mut tx = self.pool.begin().await?;
+        let result = sqlx::query(
+            r#"
+            UPDATE agents
+            SET instances = GREATEST(instances - 1, 0),
+                status = CASE
+                    WHEN instances <= 1 THEN 'offline'
+                    ELSE 'online'
+                END
+            WHERE actor_id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Ok(None);
+        }
+
+        sqlx::query("UPDATE actors SET updated_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+        self.get_by_id(id).await
     }
 
     pub async fn delete(&self, id: uuid::Uuid) -> Result<bool> {

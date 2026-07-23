@@ -24,13 +24,31 @@ pub struct Event {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Data {
-    Actor { actor: actors::Actor },
-    Chat { chat: chats::Chat },
-    Message { message: chats::Message },
-    Task { task: tasks::Task },
-    Artifact { artifact: resources::Artifact },
-    Annotation { annotation: resources::Annotation },
-    InboundMessage { message: chats::InboundMessage },
+    Actor {
+        actor: actors::Actor,
+    },
+    Chat {
+        chat: chats::Chat,
+    },
+    Message {
+        message: chats::Message,
+    },
+    Task {
+        task: tasks::Task,
+    },
+    Artifact {
+        artifact: resources::Artifact,
+    },
+    Annotation {
+        annotation: resources::Annotation,
+    },
+    InboundMessage {
+        message: chats::InboundMessage,
+    },
+    ChatMembers {
+        chat_id: uuid::Uuid,
+        actor_ids: Vec<uuid::Uuid>,
+    },
 }
 
 impl Data {
@@ -44,6 +62,8 @@ impl Data {
     pub fn chat_id(&self) -> Option<uuid::Uuid> {
         match self {
             Self::Chat { chat } => Some(chat.id),
+            Self::ChatMembers { chat_id, .. } => Some(*chat_id),
+            Self::InboundMessage { message } => message.chat_id,
             _ => None,
         }
     }
@@ -116,5 +136,58 @@ impl From<resources::Annotation> for Data {
 impl From<chats::InboundMessage> for Data {
     fn from(message: chats::InboundMessage) -> Self {
         Self::InboundMessage { message }
+    }
+}
+
+impl From<chats::ChatMembers> for Data {
+    fn from(value: chats::ChatMembers) -> Self {
+        Self::ChatMembers {
+            chat_id: value.chat_id,
+            actor_ids: value.actor_ids,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn chat_members_uses_the_domain_event_wire_shape() {
+        let chat_id = uuid::Uuid::nil();
+        let actor_id = uuid::Uuid::from_u128(1);
+        let data = super::Data::from(crate::chats::ChatMembers {
+            chat_id,
+            actor_ids: vec![actor_id],
+        });
+        let value = serde_json::to_value(data).unwrap();
+
+        assert_eq!(value["type"], "chat_members");
+        assert_eq!(value["chat_id"], chat_id.to_string());
+        assert_eq!(value["actor_ids"][0], actor_id.to_string());
+    }
+
+    #[test]
+    fn inbound_message_exposes_its_existing_chat_reference() {
+        let chat_id = uuid::Uuid::from_u128(2);
+        let actor = crate::actors::ActorPartial {
+            id: uuid::Uuid::from_u128(1),
+            role: crate::actors::Role::User,
+            name: "User".into(),
+            agent: None,
+        };
+        let message = crate::chats::InboundMessage {
+            tenant_id: uuid::Uuid::nil(),
+            chat_id: Some(chat_id),
+            subject: None,
+            content: serde_json::from_value(serde_json::json!([
+                {"type": "text", "text": "continue"}
+            ]))
+            .unwrap(),
+            metadata: Default::default(),
+            sent_by: actor,
+        };
+        let data = super::Data::from(message);
+
+        assert_eq!(data.chat_id(), Some(chat_id));
+        assert_eq!(serde_json::to_value(data).unwrap()["message"]["chat_id"], chat_id.to_string());
     }
 }

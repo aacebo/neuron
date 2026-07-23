@@ -52,10 +52,18 @@ pub struct Message {
 pub struct InboundMessage {
     pub tenant_id: uuid::Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub chat_id: Option<uuid::Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub subject: Option<String>,
     #[validate]
     pub content: data::Contents,
     pub metadata: data::Metadata,
     #[validate]
     pub sent_by: actors::ActorPartial,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ChatMembers {
+    pub chat_id: uuid::Uuid,
+    pub actor_ids: Vec<uuid::Uuid>,
 }

@@ -23,6 +23,39 @@ impl<'a> ChatStorage<'a> {
         Ok(chat.map(|Json(chat)| chat))
     }
 
+    pub async fn get_open_for_actor(
+        &self,
+        id: uuid::Uuid,
+        tenant_id: uuid::Uuid,
+        actor_id: uuid::Uuid,
+    ) -> Result<Option<types::chats::Chat>> {
+        let query = format!(
+            r#"
+            SELECT {}
+            FROM chats chat
+            WHERE chat.id = $1
+              AND chat.tenant_id = $2
+              AND chat.closed_at IS NULL
+              AND EXISTS (
+                  SELECT 1
+                  FROM chat_actors member
+                  WHERE member.chat_id = chat.id
+                    AND member.actor_id = $3
+              )
+            "#,
+            project::chat("chat")
+        );
+
+        let chat = sqlx::query_scalar::<_, Json<types::chats::Chat>>(&query)
+            .bind(id)
+            .bind(tenant_id)
+            .bind(actor_id)
+            .fetch_optional(self.pool)
+            .await?;
+
+        Ok(chat.map(|Json(chat)| chat))
+    }
+
     pub async fn create(&self, chat: types::chats::Chat) -> Result<types::chats::Chat> {
         sqlx::query(
             r#"

@@ -3,6 +3,9 @@ services:
     build:
       target: builder
     working_dir: /app
+    environment:
+      CONSOLE_ENABLED: true
+      CONSOLE_TENANT_ID: 775a179d-9819-42c0-ab47-637bf96fbf7b
     volumes:
       - .:/app
       - broker-target:/app/target

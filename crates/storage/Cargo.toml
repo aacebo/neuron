@@ -20,3 +20,6 @@ pgvector = { version = "0.4", features = ["sqlx"] }
 
 error = { path = "../error", features = ["storage"] }
 types = { path = "../types" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "time"] }

@@ -40,6 +40,10 @@ pub fn bad_request(message: impl std::fmt::Display) -> Error {
     new("bad_request", message)
 }
 
+pub fn unauthorized(message: impl std::fmt::Display) -> Error {
+    new("unauthorized", message)
+}
+
 pub fn config(message: impl std::fmt::Display) -> Error {
     new("config", message)
 }
@@ -160,9 +164,9 @@ impl From<actix_web::Error> for Error {
 impl actix_web::ResponseError for Error {
     fn status_code(&self) -> actix_web::http::StatusCode {
         match self.name() {
-            "NotFound" => actix_web::http::StatusCode::NOT_FOUND,
-            "BadRequest" => actix_web::http::StatusCode::BAD_REQUEST,
-            "Unauthorized" => actix_web::http::StatusCode::UNAUTHORIZED,
+            "not_found" => actix_web::http::StatusCode::NOT_FOUND,
+            "bad_request" | "parse" | "json" => actix_web::http::StatusCode::BAD_REQUEST,
+            "unauthorized" => actix_web::http::StatusCode::UNAUTHORIZED,
             _ => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

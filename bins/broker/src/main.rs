@@ -6,7 +6,7 @@ mod context;
 mod extract;
 mod routes;
 
-pub use config::Config;
+pub use config::{Config, ConsoleConfig};
 pub use context::*;
 
 #[actix_web::main]
@@ -24,7 +24,9 @@ async fn main() -> ::error::Result<()> {
         .connect()
         .await?;
 
-    let ctx = Context::new(pool, socket);
+    let events = config.console.enabled.then(|| tokio::sync::broadcast::channel(1024).0);
+    let ctx = Context::new(pool, socket, config.console.clone(), events);
+    let console_enabled = config.console.enabled;
     println!("Starting server at http://0.0.0.0:{}", config.port);
 
     HttpServer::new(move || {
@@ -35,6 +37,11 @@ async fn main() -> ::error::Result<()> {
             .service(routes::agents::connect)
             .service(routes::agents::create)
             .service(routes::messages::create)
+            .configure(move |services| {
+                if console_enabled {
+                    routes::console::configure(services);
+                }
+            })
     })
     .bind(("0.0.0.0", config.port))?
     .run()

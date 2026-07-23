@@ -25,7 +25,6 @@ impl<T> std::ops::DerefMut for Json<T> {
     }
 }
 
-/// See [here](#extractor) for example of usage as an extractor.
 impl<T> FromRequest for Json<T>
 where
     T: serde::de::DeserializeOwned + serde_valid::Validate + 'static,

@@ -3,455 +3,500 @@
 {% block title %}Neuron Console{% endblock %}
 
 {% block content %}
-<style>
-@keyframes indeterminate {
-    0%   { transform: translateX(-100%) scaleX(0.5); }
-    100% { transform: translateX(200%) scaleX(0.5); }
-}
-.animate-indeterminate {
-    animation: indeterminate 1.4s ease-in-out infinite;
-    width: 50%;
-}
-[x-cloak] { display: none !important; }
-</style>
+<script id="console-config" type="application/json">{{ config_json|safe }}</script>
 
-<script id="console-message" type="application/json">{{ message|json|safe }}</script>
-
-<div class="max-w-4xl mx-auto px-6 py-10" x-data="neuronConsole()">
-
-    <div class="mb-8">
-        <h1 class="text-2xl font-bold text-white tracking-tight">Neuron Console</h1>
-        <p class="text-gray-400 mt-1 text-sm">Run text through the NLP pipeline and inspect annotations and artifacts.</p>
-    </div>
-
-    <form @submit.prevent="submit()" class="space-y-4">
-        <textarea
-            x-model="text"
-            rows="6"
-            placeholder="Type or paste a message..."
-            required
-            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm"
-        ></textarea>
-
-        <div class="flex items-center gap-4">
-            <button
-                type="submit"
-                :disabled="loading"
-                class="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-            >
-                Analyze
-            </button>
-            <span
-                x-show="showElapsed"
-                class="text-xs text-gray-500 font-mono"
-            >
-                elapsed: <span x-text="formatElapsed(elapsedMs)"></span>
-            </span>
-        </div>
-    </form>
-
-    <div x-show="loading" class="mt-6">
-        <div class="w-full bg-gray-800 rounded-full h-1 overflow-hidden">
-            <div class="h-1 bg-blue-500 rounded-full animate-indeterminate"></div>
-        </div>
-        <p class="text-gray-500 text-xs mt-2">Running pipeline…</p>
-    </div>
-
-    <div x-show="error" class="mt-6">
-        <p class="text-red-400 text-sm" x-text="error"></p>
-    </div>
-
-    <div x-show="result" class="mt-10 space-y-8">
-
-        <!-- Highlighted text view -->
-        <div>
-            <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Text</h2>
-            <div class="bg-gray-900 border border-gray-800 rounded-lg px-5 py-4 leading-relaxed text-sm font-mono max-h-80 overflow-y-auto">
-                <template x-for="(seg, i) in segments" :key="i">
-                    <span
-                        :class="highlightClass(seg.type)"
-                        :title="seg.type ? seg.type + ' · ' + seg.label + ' · ' + seg.score : ''"
-                        x-text="seg.text"
-                    ></span>
-                </template>
+<main class="console-shell" x-data="neuronConsole" x-init="init()" x-cloak>
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-mark">N</span>
+            <div>
+                <strong>Neuron</strong>
+                <span>event console</span>
             </div>
         </div>
+        <div class="topbar-meta">
+            <span class="tenant"><span>tenant</span> <code x-text="compactId(config.tenantId)"></code></span>
+            <span class="connection-pill" :class="streamStatus">
+                <i></i>
+                <span x-text="streamStatus"></span>
+            </span>
+            <button class="button ghost small" type="button" @click="resetLocalState()">Reset local state</button>
+        </div>
+    </header>
 
-        <!-- Two-column panels -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+    <aside class="sidebar">
+        <section class="sidebar-heading">
+            <span class="eyebrow">Agents</span>
+            <span class="count" x-text="agents.length"></span>
+        </section>
 
-            <!-- Annotations -->
-            <div>
-                <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Annotations</h2>
-                <template x-if="result && result.annotations.length === 0">
-                    <p class="text-gray-500 text-sm">None</p>
+        <div class="agent-list">
+            <template x-if="agents.length === 0">
+                <div class="empty compact">
+                    <strong>No agent events yet</strong>
+                    <span>New actor events will appear here.</span>
+                </div>
+            </template>
+            <template x-for="agent in agents" :key="agent.id">
+                <button
+                    type="button"
+                    class="agent-row"
+                    :class="{ active: selectedAgentId === agent.id }"
+                    @click="selectAgent(agent.id)"
+                >
+                    <span class="agent-avatar" :class="agent.status" x-text="agent.name.slice(0, 2).toUpperCase()"></span>
+                    <span class="agent-copy">
+                        <strong x-text="agent.name"></strong>
+                        <small>
+                            <i class="status-dot" :class="agent.status"></i>
+                            <span x-text="agent.status"></span>
+                            <span>·</span>
+                            <span x-text="`${agent.instances || 0} conn`"></span>
+                        </small>
+                    </span>
+                    <span class="chevron">›</span>
+                </button>
+            </template>
+        </div>
+
+        <section class="agent-connect">
+            <div class="section-label">
+                <span>Agent socket</span>
+                <span class="socket-state" :class="agentStatus" x-text="agentStatus"></span>
+            </div>
+            <select
+                class="field"
+                :value="selectedAgentId"
+                @change="selectAgent($event.target.value)"
+                aria-label="Selected agent"
+            >
+                <option value="">Select agent</option>
+                <template x-for="agent in agents" :key="agent.id">
+                    <option :value="agent.id" x-text="agent.name"></option>
                 </template>
-                <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
-                    <template x-for="(grp, gi) in groupedAnnotations" :key="gi">
-                        <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-                            <!-- Collapsed header: overlapping badges (stacked-avatar style) -->
-                            <button
-                                type="button"
-                                @click="toggleGroup(grp.key)"
-                                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-gray-800/40 transition-colors"
-                            >
-                                <!-- stacked type badges -->
-                                <div class="shrink-0 flex flex-row-reverse justify-end">
-                                    <template x-for="(ann, ai) in grp.items" :key="ai">
-                                        <span
-                                            class="text-xs font-medium px-2 py-0.5 rounded-full ring-2 ring-gray-900 -ml-2 first:ml-0"
-                                            :class="badgeClass(ann.type)"
-                                            :style="'z-index:' + (grp.items.length - ai)"
-                                            :title="ann.type"
-                                            x-text="ann.type"
-                                        ></span>
-                                    </template>
-                                </div>
-                                <span class="text-gray-200 truncate flex-1 min-w-0" x-text="grp.label"></span>
-                                <template x-if="grp.start !== null">
-                                    <span
-                                        class="shrink-0 text-gray-600 text-xs font-mono"
-                                        x-text="grp.start + '-' + grp.end"
-                                    ></span>
-                                </template>
-                                <!-- chevron -->
-                                <svg
-                                    class="shrink-0 w-4 h-4 text-gray-500 transition-transform"
-                                    :class="isExpanded(grp.key) ? 'rotate-180' : ''"
-                                    viewBox="0 0 20 20" fill="currentColor"
-                                >
-                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
+            </select>
+            <input
+                class="field mono"
+                type="password"
+                x-model="agentSecret"
+                placeholder="Agent secret"
+                autocomplete="off"
+                aria-label="Agent secret"
+            >
+            <div class="button-row">
+                <button class="button primary" type="button" @click="connectAgent()" :disabled="agentStatus === 'connecting'">
+                    Connect
+                </button>
+                <button class="button ghost" type="button" @click="disconnectAgent()" :disabled="agentStatus === 'disconnected'">
+                    Close
+                </button>
+            </div>
+            <p class="microcopy">Secrets stay in this browser session.</p>
+        </section>
+    </aside>
 
-                            <!-- Expanded detail: indented label -> score list -->
-                            <div x-show="isExpanded(grp.key)" x-cloak class="px-4 pb-3 pt-0 border-t border-gray-800/70">
-                                <div class="space-y-1.5 pt-2 pl-3">
-                                    <template x-for="(ann, ai) in grp.items" :key="ai">
-                                        <div class="flex items-center gap-3">
-                                            <span
-                                                class="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full"
-                                                :class="badgeClass(ann.type)"
-                                                x-text="ann.type"
-                                            ></span>
-                                            <span class="text-gray-300 truncate flex-1 min-w-0" x-text="ann.label"></span>
-                                            <div class="shrink-0 flex items-center gap-2 w-24">
-                                                <div class="flex-1 bg-gray-800 rounded-full h-1.5">
-                                                    <div
-                                                        class="bg-gray-400 h-1.5 rounded-full"
-                                                        :style="'width:' + Math.round(ann.score * 100) + '%'"
-                                                    ></div>
-                                                </div>
-                                                <span class="text-gray-500 text-xs w-8 text-right" x-text="ann.score.toFixed(2)"></span>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
+    <section class="workspace">
+        <nav class="tabs" aria-label="Console sections">
+            <button type="button" :class="{ active: tab === 'compose' }" @click="selectTab('compose')">Compose</button>
+            <button type="button" :class="{ active: tab === 'chat' }" @click="selectTab('chat')">Live chat</button>
+            <button type="button" :class="{ active: tab === 'topology' }" @click="selectTab('topology')">Topology</button>
+            <button type="button" :class="{ active: tab === 'traces' }" @click="selectTab('traces')">
+                Traces <span x-text="traceItems.length"></span>
+            </button>
+        </nav>
+
+        <section class="view compose-view" x-show="tab === 'compose'">
+            <div class="view-heading">
+                <div>
+                    <span class="eyebrow">Message composer</span>
+                    <h1>Send an event into the system.</h1>
+                    <p>The generated trace will open as soon as its first persisted event arrives.</p>
+                </div>
+                <div class="segmented" role="group" aria-label="Sender role">
+                    <button type="button" :class="{ active: senderMode === 'user' }" @click="senderMode = 'user'">User</button>
+                    <button type="button" :class="{ active: senderMode === 'agent' }" @click="senderMode = 'agent'">Agent</button>
                 </div>
             </div>
 
-            <!-- Artifacts -->
-            <div>
-                <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Artifacts</h2>
-                <template x-if="result && result.artifacts.length === 0">
-                    <p class="text-gray-500 text-sm">None</p>
-                </template>
-                <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
-                    <template x-for="(art, i) in (result ? result.artifacts : [])" :key="i">
-                        <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 text-sm">
-                            <template x-if="art.name === 'summary'">
-                                <div>
-                                    <div class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Summary</div>
-                                    <blockquote class="text-gray-300 leading-relaxed border-l-2 border-gray-700 pl-3 italic max-h-64 overflow-y-auto pr-2" x-text="art.content && art.content.text"></blockquote>
+            <form class="composer" @submit.prevent="sendMessage()" @keydown.meta.enter.prevent="sendMessage()" @keydown.ctrl.enter.prevent="sendMessage()">
+                <div class="identity-grid" x-show="senderMode === 'user'">
+                    <label>
+                        <span>External ID</span>
+                        <input class="field mono" x-model="userExternalId" required>
+                    </label>
+                    <label>
+                        <span>Display name</span>
+                        <input class="field" x-model="userName" required>
+                    </label>
+                </div>
+
+                <div class="agent-sender" x-show="senderMode === 'agent'">
+                    <span class="agent-avatar small" :class="agentStatus === 'connected' ? 'online' : 'offline'">WS</span>
+                    <div>
+                        <strong x-text="agents.find(agent => agent.id === selectedAgentId)?.name || 'No agent selected'"></strong>
+                        <small x-text="agentStatus === 'connected' ? 'Authenticated WebSocket' : 'Connect the agent socket to send'"></small>
+                    </div>
+                </div>
+
+                <label>
+                    <span>Subject <em>optional</em></span>
+                    <input class="field" x-model="subject" placeholder="Short context for this message">
+                </label>
+
+                <template x-if="!rawMode">
+                    <div class="form-stack">
+                        <label>
+                            <span>Text block</span>
+                            <textarea class="field message-input" x-model="messageText" placeholder="What should the system route?"></textarea>
+                        </label>
+                        <template x-for="block in contentBlocks" :key="block.id">
+                            <div class="content-block">
+                                <div class="content-block-heading">
+                                    <select class="field" x-model="block.type" aria-label="Content block type">
+                                        <option value="text">Text</option>
+                                        <option value="json">JSON</option>
+                                        <option value="file">File URL</option>
+                                    </select>
+                                    <button class="icon-button" type="button" @click="removeContentBlock(block.id)">Remove</button>
                                 </div>
-                            </template>
-                            <template x-if="art.name === 'embedding'">
-                                <div>
-                                    <div class="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">
-                                        Embedding <span class="normal-case font-normal text-gray-600" x-text="art.embedding ? art.embedding.length + ' dims' : ''"></span>
-                                    </div>
+                                <input
+                                    class="field"
+                                    x-show="block.type === 'file'"
+                                    x-model="block.name"
+                                    placeholder="File name (optional)"
+                                    aria-label="File name"
+                                >
+                                <textarea
+                                    class="field code-input"
+                                    x-model="block.value"
+                                    :placeholder="block.type === 'file' ? 'https://example.test/file' : block.type === 'json' ? '{ &quot;key&quot;: &quot;value&quot; }' : 'Additional text'"
+                                    spellcheck="false"
+                                ></textarea>
+                            </div>
+                        </template>
+                        <div class="button-row content-actions">
+                            <button class="button ghost small" type="button" @click="addContentBlock('text')">+ Text</button>
+                            <button class="button ghost small" type="button" @click="addContentBlock('json')">+ JSON</button>
+                            <button class="button ghost small" type="button" @click="addContentBlock('file')">+ File URL</button>
+                        </div>
+                        <label>
+                            <span>Metadata JSON</span>
+                            <textarea class="field code-input" x-model="metadataText" spellcheck="false"></textarea>
+                        </label>
+                    </div>
+                </template>
+
+                <template x-if="rawMode">
+                    <label>
+                        <span>Raw wire payload</span>
+                        <textarea class="field raw-input" x-model="rawPayload" spellcheck="false"></textarea>
+                    </label>
+                </template>
+
+                <div class="composer-actions">
+                    <div class="button-row">
+                        <button class="button ghost" type="button" @click="toggleRawMode()" x-text="rawMode ? 'Structured mode' : 'Raw JSON'"></button>
+                        <button class="button ghost" type="button" x-show="rawMode" @click="formatPayload()">Format</button>
+                        <button class="button ghost" type="button" @click="copyPayload()">Copy payload</button>
+                    </div>
+                    <button class="button primary send" type="submit">
+                        Send message
+                        <kbd>⌘↵</kbd>
+                    </button>
+                </div>
+            </form>
+
+            <details class="payload-preview">
+                <summary>Exact outbound payload</summary>
+                <pre x-text="formatJson(previewPayload())"></pre>
+            </details>
+        </section>
+
+        <section class="view chat-view" x-show="tab === 'chat'">
+            <div class="chat-heading">
+                <div>
+                    <span class="eyebrow">Live chat</span>
+                    <h1 x-text="currentChatTrace() ? traceLabel(currentChatTrace()) : 'Waiting for the first event…'"></h1>
+                    <div class="chat-context">
+                        <code x-text="selectedTraceId || 'No trace selected'"></code>
+                        <code x-text="currentChatId() ? `chat ${currentChatId()}` : 'conversation pending'"></code>
+                        <template x-for="agentId in currentChatTrace()?.agentIds || []" :key="agentId">
+                            <span
+                                class="participant-chip"
+                                x-text="agents.find(agent => agent.id === agentId)?.name || compactId(agentId)"
+                            ></span>
+                        </template>
+                    </div>
+                </div>
+                <label class="chat-picker">
+                    <span>Conversation</span>
+                    <select class="field" x-model="selectedTraceId" @change="selectChatTrace(selectedTraceId)">
+                        <option value="">Select a message trace</option>
+                        <template x-for="trace in chatConversations()" :key="trace.id">
+                            <option :value="trace.id" x-text="`${traceLabel(trace)} · ${compactId(trace.id)}`"></option>
+                        </template>
+                    </select>
+                </label>
+            </div>
+
+            <div class="chat-stream">
+                <template x-if="pendingTraceId && chatMessages().length === 0">
+                    <div class="chat-pending">
+                        <span class="activity-pulse"></span>
+                        Waiting for the first persisted event…
+                    </div>
+                </template>
+                <template x-if="!pendingTraceId && !currentChatTrace()">
+                    <div class="empty">
+                        <strong>No live conversation selected</strong>
+                        <span>Send a message from Compose or select a message trace above.</span>
+                    </div>
+                </template>
+                <template x-for="message in chatMessages()" :key="message.event.id">
+                    <article class="chat-message" :class="message.actor?.role === 'agent' ? 'agent' : 'user'">
+                        <header>
+                            <strong x-text="message.actor?.name || 'Unknown sender'"></strong>
+                            <span x-text="message.actor?.role || 'actor'"></span>
+                            <time x-text="formatTime(message.event.created_at)"></time>
+                        </header>
+                        <div class="chat-content">
+                            <template x-for="(block, index) in message.content" :key="`${message.event.id}:${index}`">
+                                <div class="chat-block" :class="`content-${block.type}`">
+                                    <p x-show="block.type === 'text'" x-text="block.text"></p>
+                                    <pre x-show="block.type === 'json'" x-text="formatJson(block.json)"></pre>
+                                    <a
+                                        x-show="block.type === 'file' && block.uri"
+                                        :href="block.uri"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        x-text="block.name || block.uri"
+                                    ></a>
                                     <code
-                                        class="block text-gray-400 font-mono text-xs break-all max-h-48 overflow-y-auto"
-                                        x-text="art.embedding ? '[' + art.embedding.slice(0, 8).map(v => v.toFixed(3)).join(', ') + (art.embedding.length > 8 ? ', …' : '') + ']' : ''"
+                                        x-show="block.type === 'file' && block.base64"
+                                        x-text="block.name || `${block.base64.length} base64 characters`"
                                     ></code>
                                 </div>
                             </template>
                         </div>
+                        <button class="icon-button message-inspect" type="button" @click="inspectEvent(message.event)">
+                            Inspect event
+                        </button>
+                    </article>
+                </template>
+            </div>
+
+            <div class="chat-activity" x-show="chatActivity().length">
+                <span class="eyebrow">Event activity</span>
+                <template x-for="event in chatActivity()" :key="event.id">
+                    <button type="button" @click="inspectEvent(event)">
+                        <i></i>
+                        <strong x-text="event.key"></strong>
+                        <time x-text="formatTime(event.created_at)"></time>
+                    </button>
+                </template>
+            </div>
+
+            <form
+                class="chat-composer"
+                @submit.prevent="sendChatMessage()"
+                @keydown.meta.enter.prevent="sendChatMessage()"
+                @keydown.ctrl.enter.prevent="sendChatMessage()"
+            >
+                <div class="chat-composer-meta">
+                    <div class="segmented compact" role="group" aria-label="Live chat sender">
+                        <button type="button" :class="{ active: senderMode === 'user' }" @click="senderMode = 'user'">
+                            User
+                        </button>
+                        <button type="button" :class="{ active: senderMode === 'agent' }" @click="senderMode = 'agent'">
+                            Agent
+                        </button>
+                    </div>
+                    <span class="chat-sender">
+                        <strong
+                            x-text="senderMode === 'user'
+                                ? userName
+                                : agents.find(agent => agent.id === selectedAgentId)?.name || 'No agent selected'"
+                        ></strong>
+                        <small
+                            x-text="senderMode === 'agent'
+                                ? agentStatus === 'connected' ? 'authenticated socket' : 'connect agent to send'
+                                : userExternalId"
+                        ></small>
+                    </span>
+                    <span class="composer-shortcut">⌘/Ctrl + Enter</span>
+                </div>
+                <div class="chat-input-row">
+                    <textarea
+                        class="field"
+                        x-model="chatDraft"
+                        rows="2"
+                        aria-label="Live chat message"
+                        :disabled="!currentChatId()"
+                        :placeholder="!currentChatId()
+                            ? 'Waiting for conversation creation…'
+                            : senderMode === 'agent'
+                                ? 'Send a message as the connected agent…'
+                                : 'Send a message as this user…'"
+                    ></textarea>
+                    <button
+                        class="button primary"
+                        type="submit"
+                        :disabled="!currentChatId() || !chatDraft.trim() || (senderMode === 'agent' && agentStatus !== 'connected')"
+                    >
+                        Send
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="view topology-view" x-show="tab === 'topology'">
+            <div class="view-heading compact-heading">
+                <div>
+                    <span class="eyebrow">Live topology</span>
+                    <h1>Capabilities and routing relationships.</h1>
+                </div>
+                <button class="button ghost small" type="button" @click="fitGraph()">Fit graph</button>
+            </div>
+            <div class="graph-legend">
+                <span><i class="legend-agent online"></i> Online agent</span>
+                <span><i class="legend-agent"></i> Offline agent</span>
+                <span><i class="legend-skill"></i> Capability</span>
+                <span><i class="legend-edge"></i> Co-selected</span>
+            </div>
+            <div class="topology-canvas" x-ref="topology" aria-label="Agent topology graph"></div>
+        </section>
+
+        <section class="view traces-view" x-show="tab === 'traces'">
+            <div class="trace-browser">
+                <div class="trace-search">
+                    <input class="field" x-model="traceFilter" placeholder="Search trace or payload">
+                    <input class="field mono" x-model="keyFilter" placeholder="event.key">
+                    <select class="field trace-agent-filter" x-model="traceAgentFilter" aria-label="Filter traces by agent">
+                        <option value="">All agents</option>
+                        <template x-for="agent in agents" :key="agent.id">
+                            <option :value="agent.id" x-text="agent.name"></option>
+                        </template>
+                    </select>
+                    <input class="field mono" type="datetime-local" x-model="traceAfter" aria-label="Trace after">
+                    <input class="field mono" type="datetime-local" x-model="traceBefore" aria-label="Trace before">
+                </div>
+                <div class="trace-list">
+                    <template x-if="filteredTraces().length === 0">
+                        <div class="empty">
+                            <strong>No matching traces</strong>
+                            <span>Send a message or adjust the filters.</span>
+                        </div>
+                    </template>
+                    <template x-for="trace in filteredTraces()" :key="trace.id">
+                        <button
+                            type="button"
+                            class="trace-row"
+                            :class="{ active: selectedTraceId === trace.id }"
+                            @click="selectTrace(trace)"
+                        >
+                            <span class="trace-line"></span>
+                            <span class="trace-copy">
+                                <strong x-text="traceLabel(trace)"></strong>
+                                <small>
+                                    <code x-text="compactId(trace.id)"></code>
+                                    <span>·</span>
+                                    <span x-text="`${trace.events.length} events`"></span>
+                                </small>
+                            </span>
+                            <time x-text="formatTime(trace.updatedAt)"></time>
+                        </button>
                     </template>
                 </div>
             </div>
 
-        </div>
+            <div class="timeline">
+                <template x-if="!selectedTraceId">
+                    <div class="empty">
+                        <strong>Select a trace</strong>
+                        <span>Its event sequence will appear here.</span>
+                    </div>
+                </template>
+                <template x-for="(event, index) in currentTraceEvents()" :key="event.id">
+                    <button
+                        type="button"
+                        class="event-row"
+                        :class="{ active: selectedEvent?.id === event.id }"
+                        @click="inspectEvent(event)"
+                    >
+                        <span class="event-marker"></span>
+                        <span class="event-main">
+                            <strong x-text="event.key"></strong>
+                            <code x-text="compactId(event.id)"></code>
+                        </span>
+                        <span class="event-time">
+                            <time x-text="formatTime(event.created_at)"></time>
+                            <small x-text="eventDelta(event, index)"></small>
+                        </span>
+                    </button>
+                </template>
+            </div>
+        </section>
+    </section>
 
-        <!-- Metadata footer -->
-        <div class="border-t border-gray-800 pt-4 flex flex-wrap gap-6 text-xs text-gray-600 font-mono">
-            <span>id: <span x-text="result ? result.id : ''"></span></span>
-            <span x-show="taskStatus(result)">status: <span x-text="taskStatus(result)"></span></span>
-            <span>source: <span x-text="result ? result.source : ''"></span></span>
-            <span>created: <span x-text="result ? result.created_at : ''"></span></span>
+    <aside class="inspector">
+        <div class="inspector-heading">
+            <div>
+                <span class="eyebrow">Inspector</span>
+                <strong x-text="selectedEvent ? selectedEvent.key : selectedEntity ? 'Entity metadata' : 'Nothing selected'"></strong>
+            </div>
+            <div class="button-row">
+                <button class="icon-button" type="button" @click="copyTraceId()" :disabled="!selectedTraceId" title="Copy trace ID">Trace ID</button>
+                <button class="icon-button" type="button" @click="copyInspector()" :disabled="!inspectorValue()" title="Copy JSON">Copy</button>
+            </div>
         </div>
+        <div class="inspector-tools">
+            <input class="field" x-model="inspectorSearch" placeholder="Find in JSON">
+            <div class="segmented compact" role="group" aria-label="JSON view">
+                <button type="button" :class="{ active: inspectorMode === 'raw' }" @click="inspectorMode = 'raw'">Raw</button>
+                <button type="button" :class="{ active: inspectorMode === 'tree' }" @click="inspectorMode = 'tree'">Tree</button>
+            </div>
+        </div>
+        <template x-if="inspectorValue() && inspectorMode === 'raw'">
+            <pre class="json-view" x-text="inspectorJson()"></pre>
+        </template>
+        <template x-if="inspectorValue() && inspectorMode === 'tree'">
+            <div class="json-tree">
+                <template x-for="row in inspectorTree()" :key="row.path">
+                    <div
+                        class="json-tree-row"
+                        :class="{ expandable: row.expandable }"
+                        :style="`padding-left: ${8 + row.depth * 12}px`"
+                        :title="row.path"
+                    >
+                        <button
+                            class="json-disclosure"
+                            type="button"
+                            :class="{ open: row.expanded }"
+                            :disabled="!row.expandable"
+                            @click="row.expandable && toggleJsonPath(row.path)"
+                            :aria-label="row.expanded ? 'Collapse value' : 'Expand value'"
+                        >›</button>
+                        <code class="json-key" x-text="row.key"></code>
+                        <span class="json-colon">:</span>
+                        <span class="json-value" :class="`json-${row.valueType}`" x-text="row.value"></span>
+                    </div>
+                </template>
+            </div>
+        </template>
+        <template x-if="!inspectorValue()">
+            <div class="empty inspector-empty">
+                <strong>Inspect the event stream</strong>
+                <span>Select an agent, graph node, edge, or trace event.</span>
+            </div>
+        </template>
+    </aside>
 
+    <div class="toast error" x-show="error" x-transition>
+        <span x-text="error"></span>
+        <button type="button" @click="error = ''">×</button>
     </div>
-
-</div>
-
-<script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('neuronConsole', () => ({
-        text: '',
-        loading: false,
-        result: null,
-        error: null,
-        eventSource: null,
-
-        init() {
-            const message = this.pageMessage();
-            if (message) {
-                this.applyResult(message);
-
-                if (this.shouldWatch(message)) {
-                    this.watchRun(message.id);
-                }
-            }
-        },
-
-        async submit() {
-            this.closeEvents();
-            this.loading = true;
-            this.result = null;
-            this.error = null;
-            try {
-                const res = await fetch('/chats/console/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: this.text }),
-                });
-                if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-                const message = await res.json();
-
-                window.location.assign(`/console/${message.id}`);
-            } catch (e) {
-                this.error = e.message;
-                this.loading = false;
-            }
-        },
-
-        pageMessage() {
-            const el = document.getElementById('console-message');
-            if (!el) return null;
-
-            try {
-                return JSON.parse(el.textContent);
-            } catch {
-                return null;
-            }
-        },
-
-        watchRun(messageId) {
-            this.closeEvents();
-            this.loading = true;
-
-            const es = new EventSource(`/messages/${messageId}/events`);
-            this.eventSource = es;
-
-            es.onmessage = (e) => {
-                try {
-                    this.applyResult(JSON.parse(e.data));
-                } catch {}
-            };
-
-            es.addEventListener('done', () => {
-                this.closeEvents();
-                this.loading = false;
-            });
-
-            es.onerror = () => {
-                this.closeEvents();
-                if (this.shouldWatch(this.result)) {
-                    this.error = 'Connection lost';
-                }
-                this.loading = false;
-            };
-        },
-
-        closeEvents() {
-            if (this.eventSource) {
-                this.eventSource.close();
-                this.eventSource = null;
-            }
-        },
-
-        applyResult(result) {
-            this.result = result;
-            this.text = result.text ?? '';
-
-            const status = this.taskStatus(result);
-
-            if (status === 'failure') {
-                this.error = this.formatJobFailure(this.latestJob(result)?.error);
-            } else if (status === 'cancelled') {
-                this.error = 'Pipeline cancelled';
-            } else {
-                this.error = null;
-            }
-
-            this.loading = this.shouldWatch(result);
-        },
-
-        shouldWatch(result) {
-            if (!result) return false;
-
-            const tasks = result.tasks ?? [];
-            return tasks.length === 0 || this.hasIncompleteJobs(result);
-        },
-
-        isTerminalStatus(status) {
-            return ['success', 'failure', 'cancelled'].includes(status);
-        },
-
-        hasIncompleteJobs(result = this.result) {
-            return (result?.tasks ?? []).some(task => !this.isTerminalStatus(task.status));
-        },
-
-        latestJob(result = this.result) {
-            return result?.tasks?.[0] ?? null;
-        },
-
-        taskStatus(result = this.result) {
-            return this.latestJob(result)?.status ?? null;
-        },
-
-        elapsedMsFor(result = this.result) {
-            const task = this.latestJob(result);
-            if (!task?.started_at || !task?.ended_at) return null;
-
-            const ms = Date.parse(task.ended_at) - Date.parse(task.started_at);
-            return Number.isFinite(ms) ? Math.max(0, ms) : null;
-        },
-
-        formatJobFailure(error) {
-            if (!error) return 'Pipeline failed';
-            if (typeof error === 'string') return `Pipeline failed: ${error}`;
-            return `Pipeline failed: ${JSON.stringify(error)}`;
-        },
-
-        formatElapsed(ms) {
-            return `${(ms / 1000).toFixed(2)}s`;
-        },
-
-        get elapsedMs() {
-            return this.elapsedMsFor(this.result);
-        },
-
-        get showElapsed() {
-            return this.result
-                && this.isTerminalStatus(this.taskStatus(this.result))
-                && Number.isFinite(this.elapsedMs);
-        },
-
-        get segments() {
-            if (!this.result) return [];
-            const text = this.result.text;
-            const chars = Array.from(text);
-            const anns = this.result.annotations ?? [];
-            const priority = { pii: 0, entity: 1, keyword: 2 };
-            const charAnn = new Array(chars.length).fill(null);
-
-            const sorted = [...anns]
-                .filter(a => a.type !== 'sentiment' && a.type in priority)
-                .sort((a, b) => (priority[b.type] ?? 99) - (priority[a.type] ?? 99));
-
-            for (const ann of sorted) {
-                for (const span of ann.spans ?? []) {
-                    const start = Math.max(0, Number(span.start) || 0);
-                    const end = Math.min(chars.length, Math.max(start, Number(span.end) || start));
-                    for (let i = start; i < end; i++) {
-                        charAnn[i] = ann;
-                    }
-                }
-            }
-
-            const segs = [];
-            let i = 0;
-            while (i < chars.length) {
-                const cur = charAnn[i];
-                let j = i + 1;
-                while (j < chars.length && charAnn[j] === cur) j++;
-                segs.push({
-                    text: chars.slice(i, j).join(''),
-                    type: cur?.type ?? '',
-                    label: cur?.label ?? '',
-                    score: cur ? cur.score.toFixed(2) : '',
-                });
-                i = j;
-            }
-            return segs;
-        },
-
-        get groupedAnnotations() {
-            if (!this.result) return [];
-            const anns = this.result.annotations ?? [];
-            const fullText = this.result.text ?? '';
-            const chars = Array.from(fullText);
-            const groups = new Map(); // key "start-end" -> { key, start, end, label, items: [] }
-
-            for (const ann of anns) {
-                const spans = (ann.spans && ann.spans.length) ? ann.spans : [null];
-                for (const span of spans) {
-                    const start = span ? Number(span.start) : null;
-                    const end   = span ? Number(span.end)   : null;
-                    const key = span ? `${start}-${end}` : `nospan-${groups.size}`;
-                    if (!groups.has(key)) {
-                        // Label for the collapsed row: the annotated text for this span.
-                        const label = span
-                            ? (chars.slice(start, end).join('') || ann.text || ann.label)
-                            : (ann.text || ann.label);
-                        groups.set(key, { key, start, end, label, items: [] });
-                    }
-                    groups.get(key).items.push(ann);
-                }
-            }
-
-            const out = [...groups.values()];
-            // stable order by span start, unspanned last
-            out.sort((a, b) => {
-                if (a.start === null) return 1;
-                if (b.start === null) return -1;
-                return a.start - b.start;
-            });
-            return out;
-        },
-
-        expandedGroups: {},
-
-        toggleGroup(key) {
-            this.expandedGroups[key] = !this.expandedGroups[key];
-        },
-
-        isExpanded(key) {
-            return !!this.expandedGroups[key];
-        },
-
-        badgeClass(type) {
-            return ({
-                entity:    'bg-blue-900 text-blue-300',
-                pii:       'bg-red-900 text-red-300',
-                keyword:   'bg-yellow-900 text-yellow-300',
-                sentiment: 'bg-green-900 text-green-300',
-            })[type] ?? 'bg-gray-800 text-gray-400';
-        },
-
-        highlightClass(type) {
-            return ({
-                entity:  'bg-blue-900/60 text-blue-200 rounded px-0.5 cursor-default',
-                pii:     'bg-red-900/60 text-red-200 rounded px-0.5 cursor-default',
-                keyword: 'bg-yellow-900/60 text-yellow-200 rounded px-0.5 cursor-default',
-            })[type] ?? '';
-        },
-    }));
-});
-</script>
+    <div class="toast notice" x-show="notice" x-transition x-effect="if (notice) setTimeout(() => notice = '', 2600)">
+        <span x-text="notice"></span>
+    </div>
+</main>
 {% endblock %}

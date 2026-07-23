@@ -7,6 +7,7 @@ use actix_web::{Error as ActixError, FromRequest, HttpMessage, HttpRequest, web}
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use storage::Storage;
+use tokio::sync::broadcast;
 
 const REQUEST_ID_HEADER: &str = "X-Request-ID";
 
@@ -15,14 +16,23 @@ pub struct Context {
     pool: PgPool,
     socket: amqp::Socket,
     start_time: DateTime<Utc>,
+    console: crate::ConsoleConfig,
+    events: Option<broadcast::Sender<types::events::Event>>,
 }
 
 impl Context {
-    pub fn new(pool: PgPool, socket: amqp::Socket) -> Self {
+    pub fn new(
+        pool: PgPool,
+        socket: amqp::Socket,
+        console: crate::ConsoleConfig,
+        events: Option<broadcast::Sender<types::events::Event>>,
+    ) -> Self {
         Self {
             pool,
             socket,
             start_time: Utc::now(),
+            console,
+            events,
         }
     }
 
@@ -36,6 +46,18 @@ impl Context {
 
     pub fn pool(&self) -> &PgPool {
         &self.pool
+    }
+
+    pub fn socket(&self) -> &amqp::Socket {
+        &self.socket
+    }
+
+    pub fn console(&self) -> &crate::ConsoleConfig {
+        &self.console
+    }
+
+    pub fn subscribe_events(&self) -> Option<broadcast::Receiver<types::events::Event>> {
+        self.events.as_ref().map(broadcast::Sender::subscribe)
     }
 }
 
@@ -72,7 +94,17 @@ impl RequestContext {
         tenant_id: uuid::Uuid,
         key: impl std::fmt::Display,
         body: impl Into<types::events::Data>,
-    ) -> ::error::Result<()> {
+    ) -> ::error::Result<types::events::Event> {
+        self.enqueue_with_trace(tenant_id, self.request_id, key, body).await
+    }
+
+    pub async fn enqueue_with_trace(
+        &self,
+        tenant_id: uuid::Uuid,
+        trace_id: uuid::Uuid,
+        key: impl std::fmt::Display,
+        body: impl Into<types::events::Data>,
+    ) -> ::error::Result<types::events::Event> {
         let data = body.into();
         let event = self
             .storage()
@@ -82,12 +114,16 @@ impl RequestContext {
                 data.chat_id(),
                 data.message_id(),
                 data.task_id(),
-                types::events::new(tenant_id, self.request_id, key, data),
+                types::events::new(tenant_id, trace_id, key, data),
             )
             .await?;
 
-        self.socket.produce().enqueue(event).await?;
-        Ok(())
+        if let Some(events) = &self.ctx.events {
+            let _ = events.send(event.clone());
+        }
+
+        self.socket.produce().enqueue(event.clone()).await?;
+        Ok(event)
     }
 }
 

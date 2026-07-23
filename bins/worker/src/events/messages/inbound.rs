@@ -23,6 +23,34 @@ pub async fn run(ctx: &EventContext<'_>, message: &types::chats::InboundMessage)
             .ok_or_else(|| error::ai("embedding pipeline returned no vector"))?;
 
         let dimensions = vector.len();
+
+        if let Some(chat_id) = message.chat_id {
+            let chat = ctx
+                .storage()
+                .chats()
+                .get_open_for_actor(chat_id, message.tenant_id, message.sent_by.id)
+                .await?
+                .ok_or_else(|| error::bad_request("chat is unavailable for this sender"))?;
+
+            let message = ctx
+                .storage()
+                .messages()
+                .create(types::chats::Message {
+                    id: uuid::Uuid::new_v4(),
+                    chat: chat.into(),
+                    content: message.content.clone(),
+                    metadata: message.metadata.clone(),
+                    embedding: Some(vector),
+                    created_by: message.sent_by.clone(),
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                })
+                .await?;
+
+            ctx.enqueue("message.create", message).await?;
+            return Ok(Some(dimensions));
+        }
+
         let policy = ctx.routing();
         let options = storage::SearchOptions::new(policy.candidate_limit, -1.0)?.with_role(types::actors::Role::Agent);
         let candidates = ctx
@@ -59,7 +87,16 @@ pub async fn run(ctx: &EventContext<'_>, message: &types::chats::InboundMessage)
         ctx.enqueue("chat.create", chat.clone()).await?;
         let mut member_ids = vec![message.sent_by.id];
         member_ids.extend(selected_agents.iter().map(|agent| agent.entity.id));
-        ctx.storage().chats().set_actors(chat.id, member_ids).await?;
+        ctx.storage().chats().set_actors(chat.id, member_ids.clone()).await?;
+        ctx.enqueue(
+            "chat.members",
+            types::chats::ChatMembers {
+                chat_id: chat.id,
+                actor_ids: member_ids,
+            },
+        )
+        .await?;
+
         let message = ctx
             .storage()
             .messages()

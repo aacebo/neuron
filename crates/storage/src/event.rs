@@ -4,6 +4,21 @@ use sqlx::types::Json;
 
 use crate::project;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct EventCursor {
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub id: uuid::Uuid,
+}
+
+impl From<&types::events::Event> for EventCursor {
+    fn from(event: &types::events::Event) -> Self {
+        Self {
+            created_at: event.created_at,
+            id: event.id,
+        }
+    }
+}
+
 pub struct EventStorage<'a> {
     pool: &'a PgPool,
 }
@@ -49,15 +64,67 @@ impl<'a> EventStorage<'a> {
         let query = format!(
             r#"
             SELECT {}
-            FROM events stored_event
-            WHERE stored_event.task_id = $1
-            ORDER BY stored_event.created_at, stored_event.id
+            FROM events
+            WHERE events.task_id = $1
+            ORDER BY events.created_at, events.id
             "#,
-            project::event("stored_event")
+            project::event("events")
         );
 
         let events = sqlx::query_scalar::<_, Json<types::events::Event>>(&query)
             .bind(task_id)
+            .fetch_all(self.pool)
+            .await?;
+
+        Ok(events.into_iter().map(|Json(event)| event).collect())
+    }
+
+    pub async fn latest_cursor(&self, tenant_id: uuid::Uuid) -> Result<Option<EventCursor>> {
+        let row = sqlx::query_as::<_, (chrono::DateTime<chrono::Utc>, uuid::Uuid)>(
+            r#"
+            SELECT created_at, id
+            FROM events
+            WHERE tenant_id = $1
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_optional(self.pool)
+        .await?;
+
+        Ok(row.map(|(created_at, id)| EventCursor { created_at, id }))
+    }
+
+    pub async fn list_after(
+        &self,
+        tenant_id: uuid::Uuid,
+        cursor: Option<EventCursor>,
+        limit: u32,
+    ) -> Result<Vec<types::events::Event>> {
+        if limit == 0 {
+            return Err(error::bad_request("event replay limit must be greater than zero"));
+        }
+
+        let query = format!(
+            r#"
+            SELECT {}
+            FROM events
+            WHERE events.tenant_id = $1
+              AND (
+                  $2::TIMESTAMPTZ IS NULL
+                  OR (events.created_at, events.id) > ($2, $3)
+              )
+            ORDER BY events.created_at, events.id
+            LIMIT $4
+            "#,
+            project::event("events")
+        );
+        let events = sqlx::query_scalar::<_, Json<types::events::Event>>(&query)
+            .bind(tenant_id)
+            .bind(cursor.map(|cursor| cursor.created_at))
+            .bind(cursor.map(|cursor| cursor.id))
+            .bind(i64::from(limit))
             .fetch_all(self.pool)
             .await?;
 
