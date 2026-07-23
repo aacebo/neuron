@@ -35,7 +35,7 @@ impl Default for SearchOptions {
     fn default() -> Self {
         Self {
             limit: 10,
-            min_similarity: 0.5,
+            min_similarity: 0.2,
         }
     }
 }
