@@ -17,7 +17,7 @@
     }
 
     async function openDatabase(config) {
-        const name = `neuron-console-${config.reducerVersion}-${config.tenantId}`;
+        const name = `neuron-console-${config.reducer_version}-${config.tenant_id}`;
         const activeKey = "neuron-console-active-cache";
         const previous = localStorage.getItem(activeKey);
         if (previous && previous !== name) {
@@ -56,7 +56,7 @@
 
     function createConsole() {
         const config = readConfig();
-        const state = Reducer.createState(config.tenantId);
+        const state = Reducer.createState(config.tenant_id);
 
         return {
             config,
@@ -133,7 +133,7 @@
 
                 socket.onopen = () => {
                     this.reconnectDelay = 800;
-                    this.streamStatus = Reducer.cursorAtOrAfter(cursor, config.highWaterCursor)
+                    this.streamStatus = Reducer.cursorAtOrAfter(cursor, config.high_water_cursor)
                         ? "live"
                         : "replaying";
                 };
@@ -141,7 +141,7 @@
                     try {
                         const event = JSON.parse(message.data);
                         this.ingestEvent(event);
-                        if (Reducer.cursorAtOrAfter(Reducer.latestCursor(state), config.highWaterCursor)) {
+                        if (Reducer.cursorAtOrAfter(Reducer.latestCursor(state), config.high_water_cursor)) {
                             this.streamStatus = "live";
                         }
                     } catch (error) {
@@ -345,17 +345,13 @@
                 this.disconnectAgent();
                 sessionStorage.setItem(`neuron-agent-secret:${agent.id}`, this.agentSecret);
                 this.agentStatus = "connecting";
-                const socket = new WebSocket(websocketUrl("/agents/connect"));
+                const socket = new WebSocket(
+                    websocketUrl("/agents/connect", {
+                        agent_id: agent.id,
+                        secret: this.agentSecret,
+                    }),
+                );
                 this.agentSocket = socket;
-                socket.onopen = () => {
-                    socket.send(
-                        JSON.stringify({
-                            type: "authenticate",
-                            agent_id: agent.id,
-                            secret: this.agentSecret,
-                        }),
-                    );
-                };
                 socket.onmessage = (message) => {
                     try {
                         const event = JSON.parse(message.data);
@@ -403,7 +399,7 @@
                     };
                 }
                 return {
-                    tenant_id: config.tenantId,
+                    tenant_id: config.tenant_id,
                     subject: this.subject || null,
                     content,
                     metadata,
@@ -532,7 +528,7 @@
                     } else {
                         payload = {
                             ...payload,
-                            tenant_id: config.tenantId,
+                            tenant_id: config.tenant_id,
                             from: payload.from || {
                                 id: this.userExternalId,
                                 name: this.userName,
@@ -788,7 +784,7 @@
                 this.database?.close();
                 await new Promise((resolve, reject) => {
                     const request = indexedDB.deleteDatabase(
-                        `neuron-console-${config.reducerVersion}-${config.tenantId}`,
+                        `neuron-console-${config.reducer_version}-${config.tenant_id}`,
                     );
                     request.onsuccess = resolve;
                     request.onerror = () => reject(request.error);

@@ -415,23 +415,21 @@ CONSOLE_TENANT_ID=775a179d-9819-42c0-ab47-637bf96fbf7b
 ```
 
 `CONSOLE_TENANT_ID` is required when the console is enabled. The development Compose override enables it for
-the fixture tenant. The console replays persisted events and follows live PostgreSQL notifications; the browser
-reduces those raw domain events into traces, agent presence, metadata, and topology. Resetting local console
-state clears only its IndexedDB event cache.
+the fixture tenant. The console replays persisted events and follows broker-enqueued events through an
+in-process broadcast; the browser reduces those raw domain events into traces, agent presence, metadata, and
+topology. Resetting local console state clears only its IndexedDB event cache.
 
-Agent WebSocket clients must authenticate with `X-Agent-Id` and `X-Agent-Secret` headers. Browser clients send
-the same credentials as their first text frame:
-
-```json
-{
-  "type": "authenticate",
-  "agent_id": "8ed43ba2-1e3e-40ac-a454-1eac00da710e",
-  "secret": "<agent secret>"
-}
-```
+Agent WebSocket clients should authenticate with `X-Agent-Id` and `X-Agent-Secret` headers. When both headers
+are absent, `/agents/connect` accepts browser-compatible `agent_id` and `secret` query parameters. Complete
+headers always take precedence, and a partial header pair is rejected instead of being combined with query
+credentials.
 
 The secret is never included in persisted actor events. The console stores a user-entered secret only in
-browser `sessionStorage`.
+browser `sessionStorage`; query credentials may remain visible in browser networking tools but are never
+included in broker tracing output.
+
+The broker uses the same compact tracing setup as the worker. Set `RUST_LOG` to override its default
+`broker=debug` filter, for example `RUST_LOG=broker=info,storage=warn`.
 
 Compose starts a new conversation. Messages sent from Live Chat include the established `chat_id`; the broker
 accepts them only from existing chat members in the configured tenant, and the worker appends them without

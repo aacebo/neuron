@@ -755,6 +755,8 @@ dependencies = [
  "sqlx",
  "storage",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
  "types",
  "uuid",
 ]

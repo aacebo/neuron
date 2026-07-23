@@ -1,13 +1,16 @@
 use std::future::{Ready, ready};
 use std::sync::Arc;
+use std::time::Instant;
 
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready};
 use actix_web::http::header::HeaderMap;
 use actix_web::{Error as ActixError, FromRequest, HttpMessage, HttpRequest, web};
 use chrono::{DateTime, Utc};
+use futures_util::future::LocalBoxFuture;
 use sqlx::PgPool;
 use storage::Storage;
 use tokio::sync::broadcast;
+use tracing::Instrument;
 
 const REQUEST_ID_HEADER: &str = "X-Request-ID";
 
@@ -66,14 +69,16 @@ pub struct RequestContext {
     ctx: Arc<Context>,
     headers: HeaderMap,
     request_id: uuid::Uuid,
+    span: tracing::Span,
 }
 
 impl RequestContext {
-    pub fn new(ctx: Arc<Context>, headers: HeaderMap, request_id: uuid::Uuid) -> Self {
+    pub fn new(ctx: Arc<Context>, headers: HeaderMap, request_id: uuid::Uuid, span: tracing::Span) -> Self {
         Self {
             ctx,
             headers,
             request_id,
+            span,
         }
     }
 
@@ -87,6 +92,10 @@ impl RequestContext {
 
     pub fn request_id(&self) -> &uuid::Uuid {
         &self.request_id
+    }
+
+    pub fn span(&self) -> &tracing::Span {
+        &self.span
     }
 
     pub async fn enqueue(
@@ -106,24 +115,57 @@ impl RequestContext {
         body: impl Into<types::events::Data>,
     ) -> ::error::Result<types::events::Event> {
         let data = body.into();
-        let event = self
-            .storage()
-            .events()
-            .create(
-                data.actor_id(),
-                data.chat_id(),
-                data.message_id(),
-                data.task_id(),
-                types::events::new(tenant_id, trace_id, key, data),
-            )
-            .await?;
+        let actor_id = data.actor_id();
+        let chat_id = data.chat_id();
+        let message_id = data.message_id();
+        let task_id = data.task_id();
+        let event = types::events::new(tenant_id, trace_id, key, data);
+        let span = tracing::info_span!(
+            parent: self.span(),
+            "event.enqueue",
+            event_key = %event.key,
+            event_id = %event.id,
+            trace_id = %event.trace_id,
+            tenant_id = %event.tenant_id,
+            actor_id = ?actor_id,
+            chat_id = ?chat_id,
+            message_id = ?message_id,
+            task_id = ?task_id,
+        );
 
-        if let Some(events) = &self.ctx.events {
-            let _ = events.send(event.clone());
+        async {
+            let event = match self
+                .storage()
+                .events()
+                .create(actor_id, chat_id, message_id, task_id, event)
+                .await
+            {
+                Ok(event) => event,
+                Err(error) => {
+                    tracing::error!(%error, "failed to persist event");
+                    return Err(error);
+                }
+            };
+
+            tracing::debug!("persisted event");
+
+            if let Some(events) = &self.ctx.events {
+                match events.send(event.clone()) {
+                    Ok(subscribers) => tracing::debug!(subscribers, "broadcast event to console subscribers"),
+                    Err(_) => tracing::debug!("event had no active console subscribers"),
+                }
+            }
+
+            if let Err(error) = self.socket.produce().enqueue(event.clone()).await {
+                tracing::error!(%error, "failed to publish event to RabbitMQ");
+                return Err(error);
+            }
+
+            tracing::debug!("published event to RabbitMQ");
+            Ok(event)
         }
-
-        self.socket.produce().enqueue(event.clone()).await?;
-        Ok(event)
+        .instrument(span)
+        .await
     }
 }
 
@@ -181,11 +223,13 @@ where
 {
     type Response = ServiceResponse<B>;
     type Error = ActixError;
-    type Future = S::Future;
+    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
+        let method = req.method().clone();
+        let path = req.path().to_string();
         let ctx = req
             .app_data::<web::Data<Context>>()
             .expect("Context not found in app data")
@@ -201,8 +245,50 @@ where
             .parse()
             .unwrap_or_else(|_| uuid::Uuid::new_v4());
 
-        let ctx = RequestContext::new(ctx, headers, request_id);
+        let span = tracing::info_span!(
+            "http.request",
+            request_id = %request_id,
+            method = %method,
+            path = %path,
+            status = tracing::field::Empty,
+            elapsed_ms = tracing::field::Empty,
+        );
+
+        let ctx = RequestContext::new(ctx, headers, request_id, span.clone());
         req.extensions_mut().insert(ctx);
-        self.service.call(req)
+        let future = self.service.call(req);
+        let completion_span = span.clone();
+
+        Box::pin(
+            async move {
+                let started_at = Instant::now();
+                tracing::debug!("request started");
+                let result = future.await;
+                let elapsed_ms = started_at.elapsed().as_millis() as u64;
+
+                match &result {
+                    Ok(response) => {
+                        let status = response.status().as_u16();
+                        completion_span.record("status", status);
+                        completion_span.record("elapsed_ms", elapsed_ms);
+
+                        if status >= 500 {
+                            tracing::error!("request completed");
+                        } else {
+                            tracing::info!("request completed");
+                        }
+                    }
+                    Err(error) => {
+                        let status = error.as_response_error().status_code().as_u16();
+                        completion_span.record("status", status);
+                        completion_span.record("elapsed_ms", elapsed_ms);
+                        tracing::error!(%error, "request failed");
+                    }
+                }
+
+                result
+            }
+            .instrument(span),
+        )
     }
 }

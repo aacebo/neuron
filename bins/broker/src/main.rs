@@ -1,5 +1,6 @@
 use actix_web::{App, HttpServer, web};
 use sqlx::postgres::PgPoolOptions;
+use tracing_subscriber::EnvFilter;
 
 mod config;
 mod context;
@@ -11,6 +12,11 @@ pub use context::*;
 
 #[actix_web::main]
 async fn main() -> ::error::Result<()> {
+    tracing_subscriber::fmt()
+        .compact()
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("broker=debug")))
+        .init();
+
     let config = Config::from_env()?;
     let pool = PgPoolOptions::new().max_connections(5).connect(&config.database_url).await?;
 
@@ -27,7 +33,7 @@ async fn main() -> ::error::Result<()> {
     let events = config.console.enabled.then(|| tokio::sync::broadcast::channel(1024).0);
     let ctx = Context::new(pool, socket, config.console.clone(), events);
     let console_enabled = config.console.enabled;
-    println!("Starting server at http://0.0.0.0:{}", config.port);
+    tracing::info!(port = config.port, console_enabled, "starting broker");
 
     HttpServer::new(move || {
         App::new()

@@ -86,7 +86,7 @@ async fn concurrent_connections_keep_presence_counts_atomic(pool: PgPool) {
     let actor_storage = ActorStorage::new(&pool);
     let actor = actor_storage.create(agent(uuid::Uuid::new_v4())).await.unwrap();
 
-    let (left, right) = tokio::join!(actor_storage.connect_agent(actor.id), actor_storage.connect_agent(actor.id));
+    let (left, right) = tokio::join!(actor_storage.connect(actor.id), actor_storage.connect(actor.id));
     left.unwrap();
     right.unwrap();
 
@@ -95,10 +95,7 @@ async fn concurrent_connections_keep_presence_counts_atomic(pool: PgPool) {
     assert_eq!(connected_agent.instances, 2);
     assert_eq!(connected_agent.status, AgentStatus::Online);
 
-    let (left, right) = tokio::join!(
-        actor_storage.disconnect_agent(actor.id),
-        actor_storage.disconnect_agent(actor.id)
-    );
+    let (left, right) = tokio::join!(actor_storage.disconnect(actor.id), actor_storage.disconnect(actor.id));
     left.unwrap();
     right.unwrap();
 

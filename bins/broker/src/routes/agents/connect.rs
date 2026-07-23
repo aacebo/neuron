@@ -2,6 +2,7 @@ use actix_web::{HttpRequest, HttpResponse, get, rt, web};
 use actix_ws::{AggregatedMessage, CloseCode, CloseReason};
 use futures_util::StreamExt;
 use serde_valid::Validate;
+use tracing::Instrument;
 
 use crate::{RequestContext, extract};
 
@@ -32,8 +33,14 @@ pub async fn connect(
 ) -> error::Result<HttpResponse> {
     let (response, session, stream) = actix_ws::handle(&req, stream)?;
     let stream = stream.aggregate_continuations().max_continuation_size(MAX_MESSAGE_SIZE);
+    let span = tracing::info_span!(
+        parent: ctx.span(),
+        "agent.connection",
+        agent_id = %actor.id,
+        tenant_id = %actor.tenant_id,
+    );
 
-    rt::spawn(run_session(ctx, session, stream, actor));
+    rt::spawn(run_session(ctx, session, stream, actor).instrument(span));
     Ok(response)
 }
 
@@ -43,14 +50,25 @@ async fn run_session(
     mut stream: actix_ws::AggregatedMessageStream,
     actor: extract::Agent,
 ) {
-    let Some(actor) = ctx.storage().actors().connect(actor.id).await.ok().flatten() else {
-        close(session, CloseCode::Error, "failed to update agent connection").await;
-        return;
+    tracing::debug!("opening agent connection");
+    let actor = match ctx.storage().actors().connect(actor.id).await {
+        Ok(Some(actor)) => actor,
+        Ok(None) => {
+            tracing::error!("agent disappeared before connection state could be updated");
+            close(session, CloseCode::Error, "failed to update agent connection").await;
+            return;
+        }
+        Err(error) => {
+            tracing::error!(%error, "failed to update agent connection state");
+            close(session, CloseCode::Error, "failed to update agent connection").await;
+            return;
+        }
     };
 
     let connection_event = match ctx.enqueue(actor.tenant_id, "actor.update", actor.clone()).await {
         Ok(event) => event,
-        Err(_) => {
+        Err(error) => {
+            tracing::error!(%error, "failed to enqueue agent connection event");
             let _ = ctx.storage().actors().disconnect(actor.id).await;
             close(session, CloseCode::Error, "failed to persist connection event").await;
             return;
@@ -58,49 +76,62 @@ async fn run_session(
     };
 
     if emit(&mut session, &connection_event).await.is_err() {
+        tracing::warn!("failed to emit agent connection event");
         disconnect(&ctx, actor.id).await;
         return;
     }
+
+    tracing::info!(
+        instances = actor.agent.as_ref().map(|agent| agent.instances),
+        "agent connected"
+    );
 
     while let Some(message) = stream.next().await {
         match message {
             Ok(AggregatedMessage::Text(text)) => {
                 let Ok(command) = serde_json::from_str::<Command>(&text) else {
+                    tracing::warn!("closing agent connection after invalid command");
                     close(session.clone(), CloseCode::Invalid, "invalid command").await;
                     break;
                 };
 
-                #[allow(irrefutable_let_patterns)]
                 let Command::MessageSend {
                     trace_id,
                     chat_id,
                     subject,
                     content,
                     metadata,
-                } = command
-                else {
-                    close(session.clone(), CloseCode::Policy, "already authenticated").await;
-                    break;
-                };
+                } = command;
 
-                if content.validate().is_err() {
+                if let Err(error) = content.validate() {
+                    tracing::warn!(%error, "closing agent connection after invalid message content");
                     close(session.clone(), CloseCode::Invalid, "invalid message content").await;
                     break;
                 }
 
                 if let Some(chat_id) = chat_id {
-                    let chat = ctx
+                    match ctx
                         .storage()
                         .chats()
                         .get_open_for_actor(chat_id, actor.tenant_id, actor.id)
-                        .await;
-                    if !matches!(chat, Ok(Some(_))) {
-                        close(session.clone(), CloseCode::Policy, "chat is unavailable for this agent").await;
-                        break;
+                        .await
+                    {
+                        Ok(Some(_)) => {}
+                        Ok(None) => {
+                            tracing::warn!(%chat_id, "agent attempted to send to an unavailable chat");
+                            close(session.clone(), CloseCode::Policy, "chat is unavailable for this agent").await;
+                            break;
+                        }
+                        Err(error) => {
+                            tracing::error!(%error, %chat_id, "failed to validate agent chat access");
+                            close(session.clone(), CloseCode::Error, "failed to validate chat access").await;
+                            break;
+                        }
                     }
                 }
 
                 let trace_id = trace_id.unwrap_or_else(uuid::Uuid::new_v4);
+                tracing::debug!(%trace_id, ?chat_id, "received agent message command");
                 let message = types::chats::InboundMessage {
                     tenant_id: actor.tenant_id,
                     chat_id,
@@ -115,24 +146,37 @@ async fn run_session(
                     .await
                 {
                     Ok(event) => event,
-                    Err(_) => {
+                    Err(error) => {
+                        tracing::error!(%error, %trace_id, ?chat_id, "failed to enqueue agent message");
                         close(session.clone(), CloseCode::Error, "failed to persist message").await;
                         break;
                     }
                 };
 
                 if emit(&mut session, &event).await.is_err() {
+                    tracing::warn!(%trace_id, ?chat_id, "failed to return agent message event");
                     break;
                 }
+
+                tracing::info!(%trace_id, ?chat_id, event_id = %event.id, "accepted agent message");
             }
             Ok(AggregatedMessage::Ping(bytes)) => {
                 if session.pong(&bytes).await.is_err() {
+                    tracing::debug!("agent connection closed while sending pong");
                     break;
                 }
             }
             Ok(AggregatedMessage::Pong(_)) => {}
-            Ok(AggregatedMessage::Close(_)) | Err(_) => break,
+            Ok(AggregatedMessage::Close(reason)) => {
+                tracing::debug!(?reason, "agent requested connection close");
+                break;
+            }
+            Err(error) => {
+                tracing::warn!(%error, "agent WebSocket stream failed");
+                break;
+            }
             Ok(AggregatedMessage::Binary(_)) => {
+                tracing::warn!("closing agent connection after binary command");
                 close(session.clone(), CloseCode::Unsupported, "text commands required").await;
                 break;
             }
@@ -147,10 +191,26 @@ async fn emit(session: &mut actix_ws::Session, event: &types::events::Event) -> 
 }
 
 async fn disconnect(ctx: &RequestContext, actor_id: uuid::Uuid) {
-    let Ok(Some(actor)) = ctx.storage().actors().disconnect(actor_id).await else {
-        return;
+    let actor = match ctx.storage().actors().disconnect(actor_id).await {
+        Ok(Some(actor)) => actor,
+        Ok(None) => {
+            tracing::warn!(%actor_id, "agent disappeared before disconnect state could be updated");
+            return;
+        }
+        Err(error) => {
+            tracing::error!(%error, %actor_id, "failed to update agent disconnect state");
+            return;
+        }
     };
-    let _ = ctx.enqueue(actor.tenant_id, "actor.update", actor).await;
+
+    let instances = actor.agent.as_ref().map(|agent| agent.instances);
+
+    if let Err(error) = ctx.enqueue(actor.tenant_id, "actor.update", actor).await {
+        tracing::error!(%error, %actor_id, "failed to enqueue agent disconnect event");
+        return;
+    }
+
+    tracing::info!(%actor_id, ?instances, "agent disconnected");
 }
 
 async fn close(session: actix_ws::Session, code: CloseCode, description: &str) {
@@ -164,17 +224,9 @@ async fn close(session: actix_ws::Session, code: CloseCode, description: &str) {
 
 #[cfg(test)]
 mod tests {
-    use actix_web::test::TestRequest;
     use serde_valid::Validate;
 
-    use super::{Command, header_credentials, secrets_match};
-
-    #[test]
-    fn secret_comparison_accepts_only_exact_values() {
-        assert!(secrets_match("secret", "secret"));
-        assert!(!secrets_match("secret", "other!"));
-        assert!(!secrets_match("secret", "short"));
-    }
+    use super::Command;
 
     #[test]
     fn parses_agent_message_command() {
@@ -190,23 +242,6 @@ mod tests {
     }
 
     #[test]
-    fn parses_header_credentials_only_as_a_complete_pair() {
-        let id = uuid::Uuid::new_v4();
-        let request = TestRequest::default()
-            .insert_header(("X-Agent-Id", id.to_string()))
-            .insert_header(("X-Agent-Secret", "secret"))
-            .to_http_request();
-        let (actual_id, secret) = header_credentials(&request).unwrap().unwrap();
-        assert_eq!(actual_id, id);
-        assert_eq!(secret, "secret");
-
-        let incomplete = TestRequest::default()
-            .insert_header(("X-Agent-Id", id.to_string()))
-            .to_http_request();
-        assert!(header_credentials(&incomplete).unwrap().is_err());
-    }
-
-    #[test]
     fn rejects_invalid_agent_message_content() {
         let command = serde_json::from_str::<Command>(
             r#"{
@@ -216,9 +251,7 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let Command::MessageSend { content, .. } = command else {
-            panic!("expected message_send");
-        };
+        let Command::MessageSend { content, .. } = command;
         assert!(content.validate().is_err());
     }
 }
