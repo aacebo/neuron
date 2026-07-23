@@ -28,9 +28,7 @@ async fn main() -> ::error::Result<()> {
         .with_queue("message.inbound".parse()?)
         .connect()
         .await?;
-
-    let ctx = Context::new(&pool, &socket);
-    let mut consumer = socket.consume("actor.create").await?;
+    let mut consumer = socket.consume("*.*").await?;
 
     tracing::info!("listening...");
 
@@ -50,25 +48,17 @@ async fn main() -> ::error::Result<()> {
             trace_id = %event.trace_id,
         );
 
+        let ctx = Context::new(&pool, span, &socket);
+
         async {
             tracing::trace!("received event delivery");
             let ctx = EventContext::new(&ctx, &delivery, &event);
-            let result = match &event.data {
-                types::events::Data::Actor { actor } => match event.key.as_str() {
-                    "actor.create" | "actor.update" => events::actors::on_event(ctx, actor).await,
-                    _ => {
-                        tracing::info!(?actor, "unsupported routing key");
-                        Ok(())
-                    }
-                },
-                _ => ctx.nack().await,
-            };
 
-            if let Err(error) = result {
+            if let Err(error) = events::run(&ctx).await {
                 tracing::error!(%error, "failed to settle event delivery");
             }
         }
-        .instrument(span)
+        .instrument(ctx.span().clone())
         .await;
     }
 

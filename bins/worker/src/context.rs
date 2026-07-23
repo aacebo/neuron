@@ -7,17 +7,23 @@ use storage::Storage;
 #[derive(Clone)]
 pub struct Context<'a> {
     pool: &'a PgPool,
+    span: tracing::Span,
     socket: &'a amqp::Socket,
     start_time: DateTime<Utc>,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(pool: &'a PgPool, socket: &'a amqp::Socket) -> Self {
+    pub fn new(pool: &'a PgPool, span: tracing::Span, socket: &'a amqp::Socket) -> Self {
         Self {
             pool,
+            span,
             socket,
             start_time: Utc::now(),
         }
+    }
+
+    pub fn span(&self) -> &tracing::Span {
+        &self.span
     }
 
     pub fn start_time(&self) -> DateTime<Utc> {
