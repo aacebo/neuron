@@ -23,6 +23,16 @@ pub struct ChatPartial {
     pub name: Option<String>,
 }
 
+impl From<Chat> for ChatPartial {
+    fn from(value: Chat) -> Self {
+        Self {
+            id: value.id,
+            tenant_id: value.tenant_id,
+            name: value.name,
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 pub struct Message {
     pub id: uuid::Uuid,

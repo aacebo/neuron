@@ -16,13 +16,13 @@ const TOP_N: usize = 5;
 
 type TokenArgs = (Vec<String>, f64, std::sync::Arc<Model>);
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TextArgs {
     pub text: Vec<String>,
     pub model: ModelArgs,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SummarizeArgs {
     pub text: Vec<String>,
     pub model: ModelArgs,
@@ -32,14 +32,14 @@ pub struct SummarizeArgs {
     pub max_len: Option<usize>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ScoredArgs {
     pub text: Vec<String>,
     pub min_score: f64,
     pub model: ModelArgs,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ModelArgs {
     pub provider: Option<String>,
     pub model: Option<String>,

@@ -7,10 +7,10 @@ content-type: application/json
     "tenant_id": "775a179d-9819-42c0-ab47-637bf96fbf7b",
     "content": [{
         "type": "text",
-        "text": "tests"
+        "text": "Review pull request 184 and determine whether the authentication middleware allows requests with expired tokens to bypass authorization."
     }],
     "from": {
         "id": "12345",
-        "name": "User"
+        "name": "Dev"
     }
 }

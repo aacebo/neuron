@@ -3,7 +3,7 @@ use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::project;
+use crate::{SearchOptions, SearchResult, project, search};
 
 pub struct ActorStorage<'a> {
     pool: &'a PgPool,
@@ -40,6 +40,50 @@ impl<'a> ActorStorage<'a> {
             .await?;
 
         Ok(actor.map(|Json(actor)| actor))
+    }
+
+    pub async fn search(
+        &self,
+        tenant_id: uuid::Uuid,
+        embedding: Vec<f32>,
+        options: SearchOptions,
+    ) -> Result<Vec<SearchResult<types::actors::Actor>>> {
+        let (embedding, limit, min_similarity) = search::prepare(embedding, options)?;
+        let projection = project::actor("actor");
+        let query = format!(
+            r#"
+            WITH nearest AS MATERIALIZED (
+                SELECT {projection} AS entity,
+                       actor.embedding <=> $2 AS distance
+                FROM actors actor
+                WHERE actor.tenant_id = $1
+                  AND actor.embedding IS NOT NULL
+                ORDER BY actor.embedding <=> $2
+                LIMIT $3
+            )
+            SELECT entity, 1.0 - distance AS similarity
+            FROM nearest
+            WHERE distance <= 1.0 - $4
+            ORDER BY distance
+            "#,
+        );
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("SET LOCAL hnsw.iterative_scan = strict_order")
+            .execute(&mut *tx)
+            .await?;
+        let rows = sqlx::query_as::<_, (Json<types::actors::Actor>, f64)>(&query)
+            .bind(tenant_id)
+            .bind(embedding)
+            .bind(limit)
+            .bind(min_similarity)
+            .fetch_all(&mut *tx)
+            .await?;
+        tx.commit().await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(Json(entity), similarity)| SearchResult { entity, similarity })
+            .collect())
     }
 
     pub async fn create(&self, actor: types::actors::Actor) -> Result<types::actors::Actor> {

@@ -52,7 +52,7 @@ async fn main() -> ::error::Result<()> {
         let ctx = Context::new(&pool, span, &socket);
 
         async {
-            tracing::trace!("received event delivery");
+            tracing::debug!("received event delivery");
             let ctx = EventContext::new(&ctx, &delivery, &event);
 
             if let Err(error) = events::run(&ctx).await {

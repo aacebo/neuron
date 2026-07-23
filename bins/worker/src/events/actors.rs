@@ -1,7 +1,7 @@
 use crate::context::EventContext;
 
 pub async fn run(ctx: &EventContext<'_>, actor_id: uuid::Uuid) -> error::Result<()> {
-    let result: ::error::Result<Option<usize>> = async {
+    let result: error::Result<Option<usize>> = async {
         let actor = match ctx.storage().actors().get_by_id(actor_id).await? {
             Some(actor) => actor,
             None => {

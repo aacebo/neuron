@@ -1,17 +1,74 @@
 @base = http://localhost:8080
+@tenant_id = 775a179d-9819-42c0-ab47-637bf96fbf7b
 
+### Create Calendar Agent
 POST {{base}}/agents HTTP/1.1
 content-type: application/json
 
 {
-    "tenant_id": "775a179d-9819-42c0-ab47-637bf96fbf7b",
-    "name": "test",
-    "display_name": "Test",
-    "description": "a test agent",
+    "tenant_id": "{{tenant_id}}",
+    "name": "calendar_agent",
+    "description": "Manages calendars, availability, meetings, attendees, and reminders",
     "skills": [
         {
-            "name": "do_something",
-            "display_name": "Do Something"
+            "name": "manage_calendar",
+            "display_name": "Manage Calendar"
+        },
+        {
+            "name": "check_availability",
+            "display_name": "Check Availability"
+        },
+        {
+            "name": "schedule_meeting",
+            "display_name": "Schedule Meeting"
+        }
+    ]
+}
+
+### Create Expense Agent
+POST {{base}}/agents HTTP/1.1
+content-type: application/json
+
+{
+    "tenant_id": "{{tenant_id}}",
+    "name": "expense_agent",
+    "description": "Processes receipts, categorizes expenses, and creates reimbursement reports",
+    "skills": [
+        {
+            "name": "process_receipt",
+            "display_name": "Process Receipt"
+        },
+        {
+            "name": "categorize_expense",
+            "display_name": "Categorize Expense"
+        },
+        {
+            "name": "create_expense_report",
+            "display_name": "Create Expense Report"
+        }
+    ]
+}
+
+### Create Code Review Agent
+POST {{base}}/agents HTTP/1.1
+content-type: application/json
+
+{
+    "tenant_id": "{{tenant_id}}",
+    "name": "code_review_agent",
+    "description": "Reviews source code and pull requests for bugs, security issues, and maintainability problems",
+    "skills": [
+        {
+            "name": "review_pull_request",
+            "display_name": "Review Pull Request"
+        },
+        {
+            "name": "detect_security_issues",
+            "display_name": "Detect Security Issues"
+        },
+        {
+            "name": "suggest_refactoring",
+            "display_name": "Suggest Refactoring"
         }
     ]
 }

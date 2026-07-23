@@ -7,6 +7,7 @@ mod chat;
 mod event;
 mod message;
 mod project;
+mod search;
 mod task;
 
 pub use actor::*;
@@ -15,6 +16,7 @@ pub use artifact::*;
 pub use chat::*;
 pub use event::*;
 pub use message::*;
+pub use search::*;
 pub use task::*;
 
 pub struct Storage<'a> {

@@ -3,7 +3,7 @@ use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::project;
+use crate::{SearchOptions, SearchResult, project, search};
 
 pub struct MessageStorage<'a> {
     pool: &'a PgPool,
@@ -45,6 +45,55 @@ impl<'a> MessageStorage<'a> {
             .await?;
 
         Ok(message.map(|Json(message)| message))
+    }
+
+    pub async fn search(
+        &self,
+        tenant_id: uuid::Uuid,
+        embedding: Vec<f32>,
+        options: SearchOptions,
+    ) -> Result<Vec<SearchResult<types::chats::Message>>> {
+        let (embedding, limit, min_similarity) = search::prepare(embedding, options)?;
+        let projection = project::message("message");
+        let query = format!(
+            r#"
+            WITH nearest AS MATERIALIZED (
+                SELECT {projection} AS entity,
+                       message.embedding <=> $2 AS distance
+                FROM messages message
+                WHERE message.embedding IS NOT NULL
+                  AND EXISTS (
+                      SELECT 1
+                      FROM chats chat_scope
+                      WHERE chat_scope.id = message.chat_id
+                        AND chat_scope.tenant_id = $1
+                  )
+                ORDER BY message.embedding <=> $2
+                LIMIT $3
+            )
+            SELECT entity, 1.0 - distance AS similarity
+            FROM nearest
+            WHERE distance <= 1.0 - $4
+            ORDER BY distance
+            "#,
+        );
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("SET LOCAL hnsw.iterative_scan = strict_order")
+            .execute(&mut *tx)
+            .await?;
+        let rows = sqlx::query_as::<_, (Json<types::chats::Message>, f64)>(&query)
+            .bind(tenant_id)
+            .bind(embedding)
+            .bind(limit)
+            .bind(min_similarity)
+            .fetch_all(&mut *tx)
+            .await?;
+        tx.commit().await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(Json(entity), similarity)| SearchResult { entity, similarity })
+            .collect())
     }
 
     pub async fn create(&self, message: types::chats::Message) -> Result<types::chats::Message> {

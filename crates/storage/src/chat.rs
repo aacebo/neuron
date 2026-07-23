@@ -67,7 +67,11 @@ impl<'a> ChatStorage<'a> {
             .ok_or_else(|| error::Error::from(sqlx::Error::RowNotFound))
     }
 
-    pub async fn set_actors(&self, chat_id: uuid::Uuid, actor_ids: &[uuid::Uuid]) -> Result<types::chats::Chat> {
+    pub async fn set_actors(
+        &self,
+        chat_id: uuid::Uuid,
+        actor_ids: impl IntoIterator<Item = uuid::Uuid>,
+    ) -> Result<types::chats::Chat> {
         let mut tx = self.pool.begin().await?;
 
         sqlx::query("DELETE FROM chat_actors WHERE chat_id = $1")
@@ -86,7 +90,7 @@ impl<'a> ChatStorage<'a> {
             "#,
         )
         .bind(chat_id)
-        .bind(actor_ids.to_vec())
+        .bind(actor_ids.into_iter().collect::<Vec<_>>())
         .execute(&mut *tx)
         .await?;
 

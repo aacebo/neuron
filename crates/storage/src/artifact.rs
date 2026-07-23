@@ -3,7 +3,7 @@ use pgvector::Vector;
 use sqlx::PgPool;
 use sqlx::types::Json;
 
-use crate::project;
+use crate::{SearchOptions, SearchResult, project, search};
 
 pub struct ArtifactStorage<'a> {
     pool: &'a PgPool,
@@ -43,6 +43,55 @@ impl<'a> ArtifactStorage<'a> {
             .await?;
 
         Ok(artifacts.into_iter().map(|Json(artifact)| artifact).collect())
+    }
+
+    pub async fn search(
+        &self,
+        tenant_id: uuid::Uuid,
+        embedding: Vec<f32>,
+        options: SearchOptions,
+    ) -> Result<Vec<SearchResult<types::resources::Artifact>>> {
+        let (embedding, limit, min_similarity) = search::prepare(embedding, options)?;
+        let projection = project::artifact("artifact");
+        let query = format!(
+            r#"
+            WITH nearest AS MATERIALIZED (
+                SELECT {projection} AS entity,
+                       artifact.embedding <=> $2 AS distance
+                FROM artifacts artifact
+                WHERE artifact.embedding IS NOT NULL
+                  AND EXISTS (
+                      SELECT 1
+                      FROM chats chat_scope
+                      WHERE chat_scope.id = artifact.chat_id
+                        AND chat_scope.tenant_id = $1
+                  )
+                ORDER BY artifact.embedding <=> $2
+                LIMIT $3
+            )
+            SELECT entity, 1.0 - distance AS similarity
+            FROM nearest
+            WHERE distance <= 1.0 - $4
+            ORDER BY distance
+            "#,
+        );
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("SET LOCAL hnsw.iterative_scan = strict_order")
+            .execute(&mut *tx)
+            .await?;
+        let rows = sqlx::query_as::<_, (Json<types::resources::Artifact>, f64)>(&query)
+            .bind(tenant_id)
+            .bind(embedding)
+            .bind(limit)
+            .bind(min_similarity)
+            .fetch_all(&mut *tx)
+            .await?;
+        tx.commit().await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(Json(entity), similarity)| SearchResult { entity, similarity })
+            .collect())
     }
 
     pub async fn create(
