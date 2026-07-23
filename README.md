@@ -385,6 +385,26 @@ This allows the gateway to enforce:
 - Event persistence
 - Chat affinity
 
+### AMQP Topic Topology
+
+Events are published to the durable `events` topic exchange with concrete two-part routing keys such as
+`actor.create`. The worker consumes the shared durable `neuron.worker.events` queue, which is bound to
+`actor.*` and `message.inbound`. Multiple worker replicas consume the same queue and therefore load-balance
+deliveries.
+
+Existing development brokers may still contain the old direct exchange and one queue per routing key. A direct
+exchange cannot be redeclared as a topic exchange, so reset only that AMQP topology during coordinated downtime:
+
+1. Stop publishers and consumers with `docker compose stop broker worker`.
+2. Inspect the RabbitMQ management UI at `http://localhost:15672` and drain or explicitly discard messages in
+   `actor.create`, `actor.update`, `message.create`, and `message.inbound`.
+3. Delete those four queues and the `events` exchange in the management UI.
+4. Start the consumer first with `docker compose up -d worker` and verify that `events` is a topic exchange with
+   the `neuron.worker.events` queue and both expected bindings.
+5. Resume publishing with `docker compose up -d broker`.
+
+Do not use `docker compose down -v` for this migration because it can remove unrelated persisted data.
+
 ## Task Model
 
 Tasks have a stable identity and lifecycle.

@@ -70,6 +70,13 @@ impl<'a> EventContext<'a> {
         Ok(())
     }
 
+    pub async fn reject(&self) -> ::error::Result<()> {
+        self.delivery
+            .reject(amqp::lapin::options::BasicRejectOptions { requeue: false })
+            .await?;
+        Ok(())
+    }
+
     pub async fn enqueue(&self, key: impl std::fmt::Display, body: impl Into<types::events::Data>) -> ::error::Result<()> {
         let data = body.into();
         let event = self

@@ -22,13 +22,14 @@ async fn main() -> ::error::Result<()> {
     let pool = PgPoolOptions::new().max_connections(5).connect(&config.database_url).await?;
     let socket = amqp::new(&config.rabbitmq_url)
         .with_app_id("neuron::worker")
-        .with_queue("actor.create".parse()?)
-        .with_queue("actor.update".parse()?)
-        .with_queue("message.create".parse()?)
-        .with_queue("message.inbound".parse()?)
+        .with_queue(
+            amqp::QueueOptions::new("neuron.worker.events")
+                .with_binding("actor.*".parse()?)
+                .with_binding("message.inbound".parse()?),
+        )
         .connect()
         .await?;
-    let mut consumer = socket.consume("*.*").await?;
+    let mut consumer = socket.consume("neuron.worker.events").await?;
 
     tracing::info!("listening...");
 

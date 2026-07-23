@@ -341,6 +341,7 @@ dependencies = [
  "lapin",
  "serde",
  "serde_json",
+ "tokio",
  "types",
 ]
 

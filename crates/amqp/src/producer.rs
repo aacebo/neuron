@@ -1,7 +1,7 @@
 use error::Result;
 use lapin::{options, protocol};
 
-use crate::{Key, Socket};
+use crate::{EVENTS_EXCHANGE, RoutingKey, Socket};
 
 #[derive(Clone)]
 pub struct SocketProducer<'a> {
@@ -18,14 +18,14 @@ impl<'a> SocketProducer<'a> {
     }
 
     pub async fn enqueue(&self, event: types::events::Event) -> Result<()> {
-        let key = event.key.parse::<Key>()?;
+        let key = event.key.parse::<RoutingKey>()?;
         let payload = serde_json::to_vec(&event)?;
         let routing_key = key.to_string();
 
         self.socket
             .channel()
             .basic_publish(
-                key.exchange(),
+                EVENTS_EXCHANGE,
                 &routing_key,
                 options::BasicPublishOptions::default(),
                 &payload,
