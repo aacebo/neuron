@@ -10,15 +10,17 @@ pub struct Context<'a> {
     span: tracing::Span,
     socket: &'a amqp::Socket,
     start_time: DateTime<Utc>,
+    routing: crate::RoutingPolicy,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(pool: &'a PgPool, span: tracing::Span, socket: &'a amqp::Socket) -> Self {
+    pub fn new(pool: &'a PgPool, span: tracing::Span, socket: &'a amqp::Socket, routing: crate::RoutingPolicy) -> Self {
         Self {
             pool,
             span,
             socket,
             start_time: Utc::now(),
+            routing,
         }
     }
 
@@ -36,6 +38,10 @@ impl<'a> Context<'a> {
 
     pub fn pool(&self) -> &PgPool {
         self.pool
+    }
+
+    pub fn routing(&self) -> crate::RoutingPolicy {
+        self.routing
     }
 }
 

@@ -23,16 +23,24 @@ pub async fn run(ctx: &EventContext<'_>, message: &types::chats::InboundMessage)
             .ok_or_else(|| error::ai("embedding pipeline returned no vector"))?;
 
         let dimensions = vector.len();
-        let matches = ctx
+        let policy = ctx.routing();
+        let options = storage::SearchOptions::new(policy.candidate_limit, -1.0)?.with_role(types::actors::Role::Agent);
+        let candidates = ctx
             .storage()
             .actors()
-            .search(ctx.event().tenant_id, vector.clone(), Default::default())
+            .search(ctx.event().tenant_id, vector.clone(), options)
             .await?;
 
-        if matches.is_empty() {
-            tracing::debug!(?message, "no actors were found");
-            return Ok(None);
-        }
+        let selected_agents = match policy.decide(candidates) {
+            crate::RoutingDecision::Selected { agents, candidates } => {
+                log_routing_decision(policy, "selected", None, &candidates, &agents);
+                agents
+            }
+            crate::RoutingDecision::NoRoute { reason, candidates } => {
+                log_routing_decision(policy, "no_route", Some(reason.as_str()), &candidates, &[]);
+                return Ok(None);
+            }
+        };
 
         let chat = ctx
             .storage()
@@ -50,7 +58,7 @@ pub async fn run(ctx: &EventContext<'_>, message: &types::chats::InboundMessage)
 
         ctx.enqueue("chat.create", chat.clone()).await?;
         let mut member_ids = vec![message.sent_by.id];
-        member_ids.extend(matches.iter().map(|m| m.entity.id));
+        member_ids.extend(selected_agents.iter().map(|agent| agent.entity.id));
         ctx.storage().chats().set_actors(chat.id, member_ids).await?;
         let message = ctx
             .storage()
@@ -76,10 +84,41 @@ pub async fn run(ctx: &EventContext<'_>, message: &types::chats::InboundMessage)
         Ok(None) => ctx.ack().await?,
         Ok(Some(_)) => ctx.ack().await?,
         Err(error) => {
-            tracing::error!(%error, "failed to create agent embedding; requeuing event");
+            tracing::error!(%error, "failed to route inbound message; requeuing event");
             ctx.nack().await?;
         }
     }
 
     Ok(())
+}
+
+fn log_routing_decision(
+    policy: crate::RoutingPolicy,
+    outcome: &'static str,
+    reason: Option<&'static str>,
+    candidates: &[storage::SearchResult<types::actors::Actor>],
+    selected: &[storage::SearchResult<types::actors::Actor>],
+) {
+    let candidate_scores: Vec<_> = candidates
+        .iter()
+        .map(|candidate| format!("{}:{:.6}", candidate.entity.name, candidate.similarity))
+        .collect();
+    let selected_agent_ids: Vec<_> = selected.iter().map(|candidate| candidate.entity.id).collect();
+    let top_score = candidates.first().map(|candidate| candidate.similarity);
+    let runner_up_score = candidates.get(1).map(|candidate| candidate.similarity);
+    let observed_margin = top_score.zip(runner_up_score).map(|(top, runner_up)| top - runner_up);
+
+    tracing::info!(
+        outcome,
+        reason = reason.unwrap_or("none"),
+        ?candidate_scores,
+        ?selected_agent_ids,
+        ?top_score,
+        ?runner_up_score,
+        ?observed_margin,
+        candidate_limit = policy.candidate_limit,
+        min_confidence = policy.min_confidence,
+        ambiguity_margin = policy.ambiguity_margin,
+        "agent routing decision"
+    );
 }

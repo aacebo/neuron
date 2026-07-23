@@ -5,9 +5,11 @@ use tracing_subscriber::EnvFilter;
 mod config;
 mod context;
 mod events;
+mod routing;
 
 pub use config::Config;
 pub use context::Context;
+pub use routing::*;
 
 use crate::context::EventContext;
 
@@ -49,7 +51,7 @@ async fn main() -> ::error::Result<()> {
             trace_id = %event.trace_id,
         );
 
-        let ctx = Context::new(&pool, span, &socket);
+        let ctx = Context::new(&pool, span, &socket, config.routing);
 
         async {
             tracing::debug!("received event delivery");

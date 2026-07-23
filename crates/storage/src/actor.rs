@@ -48,6 +48,7 @@ impl<'a> ActorStorage<'a> {
         embedding: Vec<f32>,
         options: SearchOptions,
     ) -> Result<Vec<SearchResult<types::actors::Actor>>> {
+        let role = options.role.map(types::actors::Role::as_str);
         let (embedding, limit, min_similarity) = search::prepare(embedding, options)?;
         let projection = project::actor("actor");
         let query = format!(
@@ -58,6 +59,7 @@ impl<'a> ActorStorage<'a> {
                 FROM actors actor
                 WHERE actor.tenant_id = $1
                   AND actor.embedding IS NOT NULL
+                  AND ($5::TEXT IS NULL OR actor.role = $5)
                 ORDER BY actor.embedding <=> $2
                 LIMIT $3
             )
@@ -76,6 +78,7 @@ impl<'a> ActorStorage<'a> {
             .bind(embedding)
             .bind(limit)
             .bind(min_similarity)
+            .bind(role)
             .fetch_all(&mut *tx)
             .await?;
         tx.commit().await?;

@@ -7,13 +7,23 @@ pub const EMBEDDING_DIMENSIONS: usize = 384;
 pub struct SearchOptions {
     pub limit: u32,
     pub min_similarity: f64,
+    pub role: Option<types::actors::Role>,
 }
 
 impl SearchOptions {
     pub fn new(limit: u32, min_similarity: f64) -> Result<Self> {
-        let options = Self { limit, min_similarity };
+        let options = Self {
+            limit,
+            min_similarity,
+            role: None,
+        };
         options.validate()?;
         Ok(options)
+    }
+
+    pub fn with_role(mut self, role: types::actors::Role) -> Self {
+        self.role = Some(role);
+        self
     }
 
     pub fn validate(&self) -> Result<()> {
@@ -36,6 +46,7 @@ impl Default for SearchOptions {
         Self {
             limit: 10,
             min_similarity: 0.2,
+            role: None,
         }
     }
 }
@@ -65,4 +76,21 @@ pub fn prepare(embedding: Vec<f32>, options: SearchOptions) -> Result<(Vector, i
     }
 
     Ok((Vector::from(embedding), i64::from(options.limit), options.min_similarity))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SearchOptions;
+
+    #[test]
+    fn role_filter_is_optional() {
+        let options = SearchOptions::new(5, -1.0).unwrap();
+        assert_eq!(options.role, None);
+    }
+
+    #[test]
+    fn role_filter_can_be_set() {
+        let options = SearchOptions::new(5, -1.0).unwrap().with_role(types::actors::Role::Agent);
+        assert_eq!(options.role, Some(types::actors::Role::Agent));
+    }
 }

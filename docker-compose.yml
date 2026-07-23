@@ -55,6 +55,9 @@ services:
     environment:
       DATABASE_URL: postgres://admin:admin@postgres:5432/main
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
+      ROUTING_CANDIDATE_LIMIT: 5
+      ROUTING_MIN_CONFIDENCE: 0.20
+      ROUTING_AMBIGUITY_MARGIN: 0.05
     depends_on:
       postgres:
         condition: service_healthy
