@@ -41,6 +41,7 @@ pub struct Message {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
 pub struct InboundMessage {
     pub tenant_id: uuid::Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub subject: Option<String>,
     #[validate]
     pub content: data::Contents,

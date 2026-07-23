@@ -15,7 +15,7 @@ use crate::context::EventContext;
 async fn main() -> ::error::Result<()> {
     tracing_subscriber::fmt()
         .compact()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("worker=info")))
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("worker=debug")))
         .init();
 
     let config = Config::from_env()?;
