@@ -1,3 +1,4 @@
+use actix_files::Files;
 use actix_web::{App, HttpServer, web};
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::EnvFilter;
@@ -46,6 +47,13 @@ async fn main() -> ::error::Result<()> {
                 if console_enabled {
                     routes::console::configure(services);
                 }
+
+                let static_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("static");
+                services.service(
+                    Files::new("/static", static_dir)
+                        .index_file("index.html")
+                        .show_files_listing(),
+                );
             })
     })
     .bind(("0.0.0.0", config.port))?
