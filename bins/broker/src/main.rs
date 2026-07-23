@@ -30,8 +30,7 @@ async fn main() -> ::error::Result<()> {
         .connect()
         .await?;
 
-    let events = config.console.enabled.then(|| tokio::sync::broadcast::channel(1024).0);
-    let ctx = Context::new(pool, socket, config.console.clone(), events);
+    let ctx = Context::new(pool, socket, config.console.clone());
     let console_enabled = config.console.enabled;
     tracing::info!(port = config.port, console_enabled, "starting broker");
 

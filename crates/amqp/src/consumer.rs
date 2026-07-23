@@ -18,6 +18,15 @@ impl<'a> SocketConsumer<'a> {
         self.socket
     }
 
+    pub async fn cancel(&self) -> Result<()> {
+        self.socket
+            .channel()
+            .basic_cancel(self.consumer.tag().as_str(), lapin::options::BasicCancelOptions::default())
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn dequeue(&mut self) -> Option<Result<(lapin::message::Delivery, types::events::Event)>> {
         let delivery = match self.consumer.next().await? {
             Err(err) => return Some(Err(err.into())),

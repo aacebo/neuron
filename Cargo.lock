@@ -341,7 +341,6 @@ dependencies = [
  "lapin",
  "serde",
  "serde_json",
- "tokio",
  "types",
 ]
 
@@ -4726,7 +4725,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
- "tokio",
  "types",
  "uuid",
 ]

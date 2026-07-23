@@ -67,6 +67,9 @@
             graph: null,
             reconnectTimer: null,
             reconnectDelay: 800,
+            route_pulses: new Map(),
+            recent_route_traces: new Map(),
+            route_animation_frame: null,
 
             streamStatus: "starting",
             agentStatus: "disconnected",
@@ -117,6 +120,9 @@
                 window.addEventListener("beforeunload", () => {
                     this.eventSocket?.close();
                     this.agentSocket?.close();
+                    if (this.route_animation_frame !== null) {
+                        cancelAnimationFrame(this.route_animation_frame);
+                    }
                 });
             },
 
@@ -173,22 +179,34 @@
                 if (this.selectedTraceId === event.trace_id) {
                     this.activeChatId = this.eventChatId(event) || this.activeChatId;
                 }
-                this.refreshDerived();
+                this.refreshDerived(event);
+                if (this.streamStatus === "live") this.capture_route(event);
             },
 
-            refreshDerived() {
+            refreshDerived(event = null) {
                 this.agents = Array.from(state.actors.values())
                     .filter((actor) => actor.role === "agent")
                     .sort((left, right) => left.name.localeCompare(right.name));
                 this.traceItems = Reducer.traces(state);
                 if (!this.selectedAgentId && this.agents.length) this.selectedAgentId = this.agents[0].id;
                 if (this.selectedTraceId && !state.traces.has(this.selectedTraceId)) this.selectedTraceId = null;
-                if (this.graph) queueMicrotask(() => this.renderGraph());
+                if (!this.graph) return;
+
+                if (!event || ["actor.create", "actor.update", "chat.members"].includes(event.key)) {
+                    queueMicrotask(() => this.renderGraph());
+                } else {
+                    queueMicrotask(() => this.applyTraceHighlight());
+                }
             },
 
             selectTab(tab) {
                 this.tab = tab;
-                if (tab === "topology") setTimeout(() => this.ensureGraph(), 0);
+                if (tab === "topology") {
+                    setTimeout(() => {
+                        this.ensureGraph();
+                        requestAnimationFrame(() => this.fitGraph());
+                    }, 0);
+                }
             },
 
             ensureGraph() {
@@ -232,14 +250,16 @@
                             },
                         },
                         {
-                            selector: "node.skill",
+                            selector: "node.broker",
                             style: {
-                                width: 18,
-                                height: 18,
-                                "font-size": 9,
-                                "background-color": "#17222b",
-                                "border-color": "#2e7181",
-                                color: "#718096",
+                                width: 58,
+                                height: 38,
+                                shape: "round-rectangle",
+                                "background-color": "#102027",
+                                "border-width": 2,
+                                "border-color": "#67e8f9",
+                                color: "#d9f8fc",
+                                "font-weight": 600,
                             },
                         },
                         {
@@ -252,11 +272,14 @@
                             },
                         },
                         {
-                            selector: "edge.has-skill",
+                            selector: "edge.routes_to",
                             style: {
-                                "line-style": "dashed",
-                                "line-color": "#244b57",
-                                opacity: 0.5,
+                                width: 1.5,
+                                "line-color": "#35515e",
+                                "target-arrow-color": "#35515e",
+                                "target-arrow-shape": "triangle",
+                                "arrow-scale": 0.7,
+                                opacity: 0.85,
                             },
                         },
                         {
@@ -270,10 +293,41 @@
                             },
                         },
                         {
-                            selector: ".trace-match",
+                            selector: "node.trace-match",
                             style: {
                                 "border-color": "#67e8f9",
                                 "border-width": 3,
+                            },
+                        },
+                        {
+                            selector: "edge.trace-match",
+                            style: {
+                                width: 2.5,
+                                "line-color": "#67e8f9",
+                                "target-arrow-color": "#67e8f9",
+                                opacity: 0.95,
+                            },
+                        },
+                        {
+                            selector: "node.route_path",
+                            style: {
+                                "border-color": "#a5f3fc",
+                                "border-width": "mapData(route_intensity, 0, 1, 2, 6)",
+                                "overlay-color": "#22d3ee",
+                                "overlay-opacity": "mapData(route_intensity, 0, 1, 0, 0.2)",
+                                "overlay-padding": "mapData(route_intensity, 0, 1, 0, 14)",
+                            },
+                        },
+                        {
+                            selector: "edge.route_path",
+                            style: {
+                                width: "mapData(route_intensity, 0, 1, 1.5, 5)",
+                                "line-color": "#67e8f9",
+                                "target-arrow-color": "#a5f3fc",
+                                opacity: "mapData(route_intensity, 0, 1, 0.72, 1)",
+                                "underlay-color": "#22d3ee",
+                                "underlay-opacity": "mapData(route_intensity, 0, 1, 0, 0.28)",
+                                "underlay-padding": "mapData(route_intensity, 0, 1, 0, 5)",
                             },
                         },
                         {
@@ -287,7 +341,7 @@
                 });
                 this.graph.on("tap", "node, edge", (event) => {
                     const data = event.target.data();
-                    this.selectedEntity = data.actor || data.skill || {
+                    this.selectedEntity = data.actor || data.cluster || {
                         kind: data.kind,
                         weight: data.weight,
                         source: data.source,
@@ -299,33 +353,220 @@
 
             renderGraph() {
                 if (!this.graph) return;
+
+                const previous_positions = new Map();
+                this.graph.nodes().forEach((node) => previous_positions.set(node.id(), node.position()));
+                const previous_pan = this.graph.pan();
+                const previous_zoom = this.graph.zoom();
+                const elements = Reducer.topology(state);
+                const next_node_ids = new Set(
+                    elements.filter((element) => element.group === "nodes").map((element) => element.data.id),
+                );
+                const needs_layout =
+                    previous_positions.size === 0 ||
+                    previous_positions.size !== next_node_ids.size ||
+                    Array.from(next_node_ids).some((id) => !previous_positions.has(id));
+
                 this.graph.elements().remove();
-                this.graph.add(Reducer.topology(state));
+                this.graph.add(elements);
+
+                if (!needs_layout) {
+                    this.graph.nodes().forEach((node) => node.position(previous_positions.get(node.id())));
+                }
+
                 this.applyTraceHighlight();
+                this.animate_route_pulses();
+
+                if (!needs_layout) {
+                    this.graph.zoom(previous_zoom);
+                    this.graph.pan(previous_pan);
+                    return;
+                }
+
+                const broker = this.graph.getElementById("broker_root");
+                this.graph
+                    .layout({
+                        name: "concentric",
+                        animate: false,
+                        fit: false,
+                        padding: 80,
+                        startAngle: -Math.PI / 2,
+                        sweep: 2 * Math.PI,
+                        clockwise: true,
+                        equidistant: true,
+                        minNodeSpacing: 70,
+                        concentric: (node) => {
+                            if (node.data("kind") === "broker") return 3;
+                            return 2;
+                        },
+                        levelWidth: () => 1,
+                    })
+                    .run();
+                broker.position({
+                    x: this.$refs.topology.clientWidth / 2,
+                    y: this.$refs.topology.clientHeight / 2,
+                });
+                broker.lock();
+
                 const layout = this.graph.layout({
                     name: "cose",
                     animate: false,
-                    fit: true,
-                    padding: 60,
-                    nodeRepulsion: 18000,
-                    idealEdgeLength: 145,
-                    componentSpacing: 110,
-                    gravity: 0.16,
+                    randomize: false,
+                    fit: false,
+                    padding: 80,
+                    nodeRepulsion: 90000,
                     nodeOverlap: 24,
+                    idealEdgeLength: 135,
+                    edgeElasticity: 110,
+                    nestingFactor: 1.2,
+                    gravity: 0.4,
+                    numIter: 1400,
+                    initialTemp: 220,
+                    coolingFactor: 0.95,
+                    minTemp: 1,
+                    componentSpacing: 100,
                 });
-                layout.on("layoutstop", () => this.graph.fit(undefined, 60));
+                layout.on("layoutstop", () => {
+                    broker.unlock();
+                    requestAnimationFrame(() => {
+                        this.fitGraph();
+                        this.animate_route_pulses();
+                    });
+                });
                 layout.run();
             },
 
             fitGraph() {
-                this.graph?.fit(undefined, 60);
+                if (!this.graph) return;
+                this.graph.resize();
+
+                const broker = this.graph.getElementById("broker_root");
+                if (!broker.length) {
+                    this.graph.fit(undefined, 60);
+                    return;
+                }
+
+                const bounds = this.graph.nodes().boundingBox({
+                    includeNodes: true,
+                    includeEdges: false,
+                    includeLabels: true,
+                });
+                const broker_position = broker.position();
+                const horizontal_extent = Math.max(
+                    broker_position.x - bounds.x1,
+                    bounds.x2 - broker_position.x,
+                    1,
+                );
+                const vertical_extent = Math.max(
+                    broker_position.y - bounds.y1,
+                    bounds.y2 - broker_position.y,
+                    1,
+                );
+                const available_width = Math.max(1, this.$refs.topology.clientWidth - 120);
+                const available_height = Math.max(1, this.$refs.topology.clientHeight - 120);
+                const zoom = Math.max(
+                    0.35,
+                    Math.min(2.4, available_width / (horizontal_extent * 2), available_height / (vertical_extent * 2)),
+                );
+
+                this.graph.zoom(zoom);
+                this.graph.pan({
+                    x: this.$refs.topology.clientWidth / 2 - broker_position.x * zoom,
+                    y: this.$refs.topology.clientHeight / 2 - broker_position.y * zoom,
+                });
             },
 
             applyTraceHighlight() {
                 if (!this.graph) return;
                 this.graph.elements().removeClass("trace-match");
                 const trace = this.traceItems.find((item) => item.id === this.selectedTraceId);
-                for (const id of trace?.agentIds || []) this.graph.getElementById(id).addClass("trace-match");
+                const agent_ids = trace?.agentIds || [];
+                if (!agent_ids.length) return;
+
+                this.graph.getElementById("broker_root").addClass("trace-match");
+                for (const id of agent_ids) {
+                    this.graph.getElementById(id).addClass("trace-match");
+                    this.graph.getElementById(`routes_to:broker_root:${id}`).addClass("trace-match");
+                }
+            },
+
+            capture_route(event) {
+                const agent_ids = Reducer.route_agent_ids(state, event);
+                if (!agent_ids.length) return;
+
+                const now = Date.now();
+                for (const [trace_id, expires_at] of this.recent_route_traces) {
+                    if (expires_at <= now) this.recent_route_traces.delete(trace_id);
+                }
+                if (this.recent_route_traces.has(event.trace_id)) return;
+                this.recent_route_traces.set(event.trace_id, now + 60000);
+
+                const reduced_motion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+                const duration = reduced_motion ? 350 : 4200;
+                for (const agent_id of agent_ids) {
+                    this.route_pulses.set(agent_id, {
+                        started_at: now,
+                        expires_at: now + duration,
+                        duration,
+                    });
+                }
+                this.animate_route_pulses();
+            },
+
+            animate_route_pulses() {
+                if (this.route_animation_frame !== null || this.route_pulses.size === 0) return;
+
+                const tick = () => {
+                    this.route_animation_frame = null;
+                    const now = Date.now();
+                    let broker_intensity = 0;
+
+                    for (const [agent_id, pulse] of this.route_pulses) {
+                        const node = this.graph?.getElementById(agent_id);
+                        const edge = this.graph?.getElementById(`routes_to:broker_root:${agent_id}`);
+
+                        if (now >= pulse.expires_at) {
+                            this.route_pulses.delete(agent_id);
+                            node?.removeClass("route_path");
+                            edge?.removeClass("route_path");
+                            continue;
+                        }
+
+                        const elapsed = now - pulse.started_at;
+                        const attack = Math.min(1, elapsed / Math.min(180, pulse.duration / 2));
+                        const fade = Math.max(
+                            0,
+                            1 - Math.max(0, elapsed - 180) / Math.max(1, pulse.duration - 180),
+                        );
+                        const intensity = attack * Math.pow(fade, 1.6);
+                        broker_intensity = Math.max(broker_intensity, intensity);
+
+                        if (node?.length) {
+                            node.data("route_intensity", intensity);
+                            node.addClass("route_path");
+                        }
+                        if (edge?.length) {
+                            edge.data("route_intensity", intensity);
+                            edge.addClass("route_path");
+                        }
+                    }
+
+                    const broker = this.graph?.getElementById("broker_root");
+                    if (broker_intensity > 0 && broker?.length) {
+                        broker.data("route_intensity", broker_intensity);
+                        broker.addClass("route_path");
+                    } else {
+                        broker?.removeClass("route_path");
+                    }
+
+                    if (this.route_pulses.size > 0) {
+                        this.route_animation_frame = requestAnimationFrame(tick);
+                    } else {
+                        this.graph?.elements(".route_path").removeClass("route_path");
+                    }
+                };
+
+                this.route_animation_frame = requestAnimationFrame(tick);
             },
 
             selectAgent(agentId) {

@@ -15,6 +15,3 @@ serde_json = { version = "1" }
 
 error = { path = "../error", features = ["amqp"] }
 types = { path = "../types" }
-
-[dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }

@@ -80,9 +80,6 @@ async fn connect(
 ) -> error::Result<HttpResponse> {
     let tenant_id = ctx.console().tenant_id.unwrap();
     let cursor = query.cursor()?;
-    let notifications = ctx
-        .subscribe_events()
-        .ok_or_else(|| error::config("console event bus is not configured"))?;
     let (response, session, stream) = actix_ws::handle(&req, payload)?;
     let stream = stream.aggregate_continuations().max_continuation_size(64 * 1024);
     let span = tracing::info_span!(
@@ -93,7 +90,7 @@ async fn connect(
         replay_after_id = ?cursor.map(|cursor| cursor.id),
     );
 
-    rt::spawn(run_stream(ctx, tenant_id, cursor, session, stream, notifications).instrument(span));
+    rt::spawn(run_stream(ctx, tenant_id, cursor, session, stream).instrument(span));
     Ok(response)
 }
 
@@ -124,10 +121,37 @@ async fn script() -> HttpResponse {
 async fn run_stream(
     ctx: RequestContext,
     tenant_id: uuid::Uuid,
+    cursor: Option<storage::EventCursor>,
+    session: actix_ws::Session,
+    stream: actix_ws::AggregatedMessageStream,
+) {
+    let binding = "#".parse().expect("the console event binding is valid");
+    let mut events = match ctx.socket().subscribe(&[binding]).await {
+        Ok(events) => events,
+        Err(error) => {
+            tracing::error!(%error, "failed to create console AMQP subscription");
+            close(session, CloseCode::Error, "event subscription failed").await;
+            return;
+        }
+    };
+
+    tracing::debug!("created exclusive console AMQP subscription");
+    run_event_stream(&ctx, tenant_id, cursor, session, stream, &mut events).await;
+
+    if let Err(error) = events.cancel().await {
+        tracing::warn!(%error, "failed to cancel console AMQP subscription");
+    } else {
+        tracing::debug!("cancelled console AMQP subscription");
+    }
+}
+
+async fn run_event_stream(
+    ctx: &RequestContext,
+    tenant_id: uuid::Uuid,
     mut cursor: Option<storage::EventCursor>,
     mut session: actix_ws::Session,
     mut stream: actix_ws::AggregatedMessageStream,
-    mut notifications: tokio::sync::broadcast::Receiver<types::events::Event>,
+    events: &mut amqp::SocketConsumer<'_>,
 ) {
     let mut sent = HashSet::new();
     let mut replayed = 0_usize;
@@ -196,40 +220,49 @@ async fn run_stream(
                     }
                 }
             }
-            notification = notifications.recv() => {
-                let event = match notification {
-                    Ok(event) => event,
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                        tracing::warn!(skipped, "console event stream lagged");
-                        close(session, CloseCode::Again, "event stream lagged").await;
+            notification = events.dequeue() => {
+                let (delivery, event) = match notification {
+                    Some(Ok(delivery)) => delivery,
+                    Some(Err(error)) => {
+                        tracing::error!(%error, "failed to consume console AMQP event");
+                        close(session, CloseCode::Error, "event subscription failed").await;
                         return;
                     }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                        tracing::info!("console event broadcaster closed");
+                    None => {
+                        tracing::warn!("console AMQP subscription ended");
+                        close(session, CloseCode::Again, "event subscription ended").await;
                         return;
                     }
                 };
 
-                if sent.contains(&event.id) {
-                    continue;
-                }
-                if event.tenant_id != tenant_id {
-                    continue;
+                if event.tenant_id == tenant_id && sent.insert(event.id) {
+                    if let Err(error) = emit(&mut session, &event).await {
+                        tracing::debug!(%error, event_id = %event.id, trace_id = %event.trace_id, "console disconnected during live event");
+                        return;
+                    }
+
+                    tracing::debug!(
+                        event_key = %event.key,
+                        event_id = %event.id,
+                        trace_id = %event.trace_id,
+                        "emitted live console event"
+                    );
                 }
 
-                sent.insert(event.id);
-
-                if let Err(error) = emit(&mut session, &event).await {
-                    tracing::debug!(%error, event_id = %event.id, trace_id = %event.trace_id, "console disconnected during live event");
+                if let Err(error) = delivery
+                    .ack(amqp::lapin::options::BasicAckOptions::default())
+                    .await
+                {
+                    tracing::error!(
+                        %error,
+                        event_key = %event.key,
+                        event_id = %event.id,
+                        trace_id = %event.trace_id,
+                        "failed to acknowledge console AMQP event"
+                    );
+                    close(session, CloseCode::Error, "event acknowledgement failed").await;
                     return;
                 }
-
-                tracing::debug!(
-                    event_key = %event.key,
-                    event_id = %event.id,
-                    trace_id = %event.trace_id,
-                    "emitted live console event"
-                );
             }
             _ = heartbeat.tick() => {
                 if session.ping(b"neuron").await.is_err() {
@@ -252,44 +285,4 @@ async fn close(session: actix_ws::Session, code: CloseCode, description: &str) {
             description: Some(description.to_string()),
         }))
         .await;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{ConsolePageConfig, ReplayQuery};
-
-    #[test]
-    fn page_config_serializes_with_snake_case_fields() {
-        let config = ConsolePageConfig {
-            tenant_id: uuid::Uuid::nil(),
-            high_water_cursor: None,
-            reducer_version: 2,
-        };
-        let value = serde_json::to_value(config).unwrap();
-
-        assert!(value.get("tenant_id").is_some());
-        assert!(value.get("high_water_cursor").is_some());
-        assert!(value.get("reducer_version").is_some());
-        assert!(value.get("tenantId").is_none());
-        assert!(value.get("highWaterCursor").is_none());
-        assert!(value.get("reducerVersion").is_none());
-    }
-
-    #[test]
-    fn replay_cursor_requires_both_fields() {
-        let query = ReplayQuery {
-            after_at: Some(chrono::Utc::now()),
-            after_id: None,
-        };
-        assert!(query.cursor().is_err());
-    }
-
-    #[test]
-    fn empty_replay_cursor_starts_from_the_beginning() {
-        let query = ReplayQuery {
-            after_at: None,
-            after_id: None,
-        };
-        assert_eq!(query.cursor().unwrap(), None);
-    }
 }

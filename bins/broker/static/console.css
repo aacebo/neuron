@@ -389,6 +389,7 @@ button:disabled {
 }
 
 .workspace {
+    container: workspace / inline-size;
     display: flex;
     min-width: 0;
     min-height: 0;
@@ -991,7 +992,7 @@ textarea.field {
 }
 
 .legend-agent,
-.legend-skill {
+.legend-broker {
     display: inline-block;
     width: 10px;
     height: 10px;
@@ -1000,21 +1001,30 @@ textarea.field {
     background: #141922;
 }
 
+.legend-broker {
+    width: 13px;
+    height: 9px;
+    border-color: var(--accent);
+    border-radius: 3px;
+    background: #102027;
+}
+
 .legend-agent.online {
     border: 2px solid var(--green);
 }
 
-.legend-skill {
-    width: 7px;
-    height: 7px;
-    border-color: #2e7181;
-}
-
-.legend-edge {
+.legend-edge,
+.legend-route {
     display: inline-block;
     width: 17px;
     height: 1px;
     background: #557087;
+}
+
+.legend-route {
+    height: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 7px rgba(103, 232, 249, 0.5);
 }
 
 .topology-canvas {
@@ -1023,7 +1033,12 @@ textarea.field {
     margin: 0 16px 16px;
     border: 1px solid var(--line);
     border-radius: 11px;
-    background: #090c11;
+    background-color: #090c11;
+    background-image:
+        linear-gradient(rgba(73, 88, 108, 0.16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(73, 88, 108, 0.16) 1px, transparent 1px);
+    background-position: -1px -1px;
+    background-size: 24px 24px;
 }
 
 .traces-view {
@@ -1042,10 +1057,15 @@ textarea.field {
 
 .trace-search {
     display: grid;
+    min-width: 0;
     grid-template-columns: 1.4fr 0.8fr;
     gap: 7px;
     padding: 13px;
     border-bottom: 1px solid var(--line);
+}
+
+.trace-search > .field {
+    min-width: 0;
 }
 
 .trace-agent-filter {
@@ -1054,6 +1074,7 @@ textarea.field {
 
 .trace-list,
 .timeline {
+    min-width: 0;
     min-height: 0;
     overflow-y: auto;
 }
@@ -1413,6 +1434,19 @@ textarea.field {
     font-size: 17px;
 }
 
+@container workspace (max-width: 600px) {
+    .traces-view {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, auto) minmax(180px, 1fr);
+    }
+
+    .trace-browser {
+        max-height: 330px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+    }
+}
+
 @media (max-width: 1180px) {
     .console-shell {
         grid-template-columns: 230px minmax(480px, 1fr) 300px;
@@ -1540,6 +1574,10 @@ textarea.field {
     .identity-grid,
     .traces-view {
         grid-template-columns: 1fr;
+    }
+
+    .traces-view {
+        grid-template-rows: minmax(0, auto) minmax(180px, 1fr);
     }
 
     .trace-browser {

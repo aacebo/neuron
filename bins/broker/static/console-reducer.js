@@ -148,10 +148,45 @@
             .sort(compareEvents);
     }
 
+    function route_agent_ids(state, event) {
+        if (!event) return [];
+
+        if (event.key === "chat.members") {
+            return (event.data?.actor_ids || []).filter((id) => state.actors.get(id)?.role === "agent");
+        }
+
+        if (event.key === "message.create") {
+            const chat_id = eventChatId(event);
+            return (state.chats.get(chat_id)?.members || []).filter(
+                (id) => state.actors.get(id)?.role === "agent",
+            );
+        }
+
+        return [];
+    }
+
     function topology(state) {
         const agents = Array.from(state.actors.values()).filter((actor) => actor.role === "agent");
         const agentIds = new Set(agents.map((agent) => agent.id));
-        const elements = [];
+        const broker_id = "broker_root";
+        const elements = [
+            {
+                group: "nodes",
+                data: {
+                    id: broker_id,
+                    kind: "broker",
+                    label: "Broker cluster",
+                    cluster: {
+                        id: broker_id,
+                        role: "broker",
+                        name: "Broker cluster",
+                        status: "online",
+                        description: "Local routing cluster",
+                    },
+                },
+                classes: "broker",
+            },
+        ];
 
         for (const agent of agents) {
             elements.push({
@@ -166,33 +201,17 @@
                 },
                 classes: `agent ${agent.status || "offline"}`,
             });
-
-            for (const skill of agent.skills || []) {
-                const skillId = `skill:${skill.name}`;
-                if (!elements.some((element) => element.data.id === skillId)) {
-                    elements.push({
-                        group: "nodes",
-                        data: {
-                            id: skillId,
-                            kind: "skill",
-                            label: skill.display_name || skill.name,
-                            skill,
-                        },
-                        classes: "skill",
-                    });
-                }
-                elements.push({
-                    group: "edges",
-                    data: {
-                        id: `has-skill:${agent.id}:${skill.name}`,
-                        kind: "has_skill",
-                        source: agent.id,
-                        target: skillId,
-                        weight: 1,
-                    },
-                    classes: "has-skill",
-                });
-            }
+            elements.push({
+                group: "edges",
+                data: {
+                    id: `routes_to:${broker_id}:${agent.id}`,
+                    kind: "routes_to",
+                    source: broker_id,
+                    target: agent.id,
+                    weight: 1,
+                },
+                classes: "routes_to",
+            });
         }
 
         const coSelection = new Map();
@@ -247,6 +266,7 @@
         latestCursor,
         reduceAll,
         reduceEvent,
+        route_agent_ids,
         topology,
         traceChatId,
         traceAgentIds,

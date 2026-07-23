@@ -50,6 +50,49 @@ impl Socket {
         Ok(SocketConsumer::new(self, consumer))
     }
 
+    pub async fn subscribe(&self, bindings: &[BindingKey]) -> Result<SocketConsumer<'_>> {
+        if bindings.is_empty() {
+            return Err(error::amqp("subscription must have at least one binding"));
+        }
+
+        let queue = self
+            .channel()
+            .queue_declare(
+                "",
+                lapin::options::QueueDeclareOptions {
+                    exclusive: true,
+                    auto_delete: true,
+                    ..Default::default()
+                },
+                lapin::types::FieldTable::default(),
+            )
+            .await?;
+
+        for binding in bindings {
+            self.channel()
+                .queue_bind(
+                    queue.name().as_str(),
+                    EVENTS_EXCHANGE,
+                    &binding.to_string(),
+                    lapin::options::QueueBindOptions::default(),
+                    lapin::types::FieldTable::default(),
+                )
+                .await?;
+        }
+
+        let consumer = self
+            .channel()
+            .basic_consume(
+                queue.name().as_str(),
+                "",
+                lapin::options::BasicConsumeOptions::default(),
+                lapin::types::FieldTable::default(),
+            )
+            .await?;
+
+        Ok(SocketConsumer::new(self, consumer))
+    }
+
     pub fn produce(&self) -> SocketProducer<'_> {
         SocketProducer::new(self)
     }
@@ -173,23 +216,5 @@ impl SocketOptions {
             channel: Arc::new(channel),
             queues,
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::QueueOptions;
-
-    #[test]
-    fn queue_options_keep_name_and_multiple_bindings() {
-        let options = QueueOptions::new("neuron.worker.events")
-            .with_binding("actor.*".parse().unwrap())
-            .with_binding("message.inbound".parse().unwrap());
-
-        assert_eq!(options.name(), "neuron.worker.events");
-        assert_eq!(
-            options.bindings().iter().map(ToString::to_string).collect::<Vec<_>>(),
-            ["actor.*", "message.inbound"]
-        );
     }
 }

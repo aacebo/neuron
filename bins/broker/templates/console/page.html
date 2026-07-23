@@ -5,7 +5,7 @@
 {% block content %}
 <script id="console-config" type="application/json">{{ config_json|safe }}</script>
 
-<main class="console-shell" x-data="neuronConsole" x-init="init()" x-cloak>
+<main class="console-shell" x-data="neuronConsole" x-cloak>
     <header class="topbar">
         <div class="brand">
             <span class="brand-mark">N</span>
@@ -273,7 +273,7 @@
                                     ></a>
                                     <code
                                         x-show="block.type === 'file' && block.base64"
-                                        x-text="block.name || `${block.base64.length} base64 characters`"
+                                        x-text="block.name || `${block.base64?.length ?? 0} base64 characters`"
                                     ></code>
                                 </div>
                             </template>
@@ -353,15 +353,16 @@
             <div class="view-heading compact-heading">
                 <div>
                     <span class="eyebrow">Live topology</span>
-                    <h1>Capabilities and routing relationships.</h1>
+                    <h1>Agent clusters and routing paths.</h1>
                 </div>
                 <button class="button ghost small" type="button" @click="fitGraph()">Fit graph</button>
             </div>
             <div class="graph-legend">
+                <span><i class="legend-broker"></i> Broker cluster</span>
                 <span><i class="legend-agent online"></i> Online agent</span>
                 <span><i class="legend-agent"></i> Offline agent</span>
-                <span><i class="legend-skill"></i> Capability</span>
                 <span><i class="legend-edge"></i> Co-selected</span>
+                <span><i class="legend-route"></i> Routed now</span>
             </div>
             <div class="topology-canvas" x-ref="topology" aria-label="Agent topology graph"></div>
         </section>

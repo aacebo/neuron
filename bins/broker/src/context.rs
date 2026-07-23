@@ -9,7 +9,6 @@ use chrono::{DateTime, Utc};
 use futures_util::future::LocalBoxFuture;
 use sqlx::PgPool;
 use storage::Storage;
-use tokio::sync::broadcast;
 use tracing::Instrument;
 
 const REQUEST_ID_HEADER: &str = "X-Request-ID";
@@ -20,22 +19,15 @@ pub struct Context {
     socket: amqp::Socket,
     start_time: DateTime<Utc>,
     console: crate::ConsoleConfig,
-    events: Option<broadcast::Sender<types::events::Event>>,
 }
 
 impl Context {
-    pub fn new(
-        pool: PgPool,
-        socket: amqp::Socket,
-        console: crate::ConsoleConfig,
-        events: Option<broadcast::Sender<types::events::Event>>,
-    ) -> Self {
+    pub fn new(pool: PgPool, socket: amqp::Socket, console: crate::ConsoleConfig) -> Self {
         Self {
             pool,
             socket,
             start_time: Utc::now(),
             console,
-            events,
         }
     }
 
@@ -57,10 +49,6 @@ impl Context {
 
     pub fn console(&self) -> &crate::ConsoleConfig {
         &self.console
-    }
-
-    pub fn subscribe_events(&self) -> Option<broadcast::Receiver<types::events::Event>> {
-        self.events.as_ref().map(broadcast::Sender::subscribe)
     }
 }
 
@@ -148,13 +136,6 @@ impl RequestContext {
             };
 
             tracing::debug!("persisted event");
-
-            if let Some(events) = &self.ctx.events {
-                match events.send(event.clone()) {
-                    Ok(subscribers) => tracing::debug!(subscribers, "broadcast event to console subscribers"),
-                    Err(_) => tracing::debug!("event had no active console subscribers"),
-                }
-            }
 
             if let Err(error) = self.socket.produce().enqueue(event.clone()).await {
                 tracing::error!(%error, "failed to publish event to RabbitMQ");

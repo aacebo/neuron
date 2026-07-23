@@ -52,10 +52,16 @@ test("actor events update status without duplicating the event", () => {
     assert.equal(state.events.length, 2);
 });
 
-test("skills and chat membership produce client-side topology", () => {
+test("agents and chat membership produce client-side topology", () => {
     const state = Reducer.createState(tenantId);
     const first = "00000000-0000-0000-0000-000000000001";
     const second = "00000000-0000-0000-0000-000000000002";
+    const chat_id = "00000000-0000-0000-0000-000000000030";
+    const chat_members = event("00000000-0000-0000-0000-000000000023", "chat.members", {
+        type: "chat_members",
+        chat_id,
+        actor_ids: [first, second],
+    });
     Reducer.reduceAll(state, [
         event("00000000-0000-0000-0000-000000000021", "actor.create", {
             type: "actor",
@@ -65,17 +71,29 @@ test("skills and chat membership produce client-side topology", () => {
             type: "actor",
             actor: actor(second, "review", "offline", [{ name: "review", display_name: "Review" }]),
         }),
-        event("00000000-0000-0000-0000-000000000023", "chat.members", {
-            type: "chat_members",
-            chat_id: "00000000-0000-0000-0000-000000000030",
-            actor_ids: [first, second],
-        }),
+        chat_members,
     ]);
 
     const topology = Reducer.topology(state);
-    assert(topology.some((element) => element.data.id === "skill:receipts"));
-    assert(topology.some((element) => element.data.id === `has-skill:${first}:receipts`));
+    const broker = topology.find((element) => element.data.kind === "broker");
+    const broker_edges = topology.filter((element) => element.data.kind === "routes_to");
+    assert.equal(broker.data.id, "broker_root");
+    assert.equal(broker_edges.length, 2);
+    assert(broker_edges.every((element) => element.data.source === broker.data.id));
+    assert.deepEqual(
+        broker_edges.map((element) => element.data.target).sort(),
+        [first, second].sort(),
+    );
+    assert.equal(topology.some((element) => element.data.kind === "skill"), false);
+    assert.equal(topology.some((element) => element.data.kind === "has_skill"), false);
     assert(topology.some((element) => element.data.kind === "co_selected" && element.data.weight === 1));
+    assert.deepEqual(Reducer.route_agent_ids(state, chat_members).sort(), [first, second].sort());
+
+    const continuation = event("00000000-0000-0000-0000-000000000024", "message.create", {
+        type: "message",
+        message: { chat: { id: chat_id } },
+    });
+    assert.deepEqual(Reducer.route_agent_ids(state, continuation).sort(), [first, second].sort());
 });
 
 test("out-of-order and unknown events remain visible in their trace", () => {

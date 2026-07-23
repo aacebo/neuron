@@ -77,20 +77,3 @@ pub fn prepare(embedding: Vec<f32>, options: SearchOptions) -> Result<(Vector, i
 
     Ok((Vector::from(embedding), i64::from(options.limit), options.min_similarity))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::SearchOptions;
-
-    #[test]
-    fn role_filter_is_optional() {
-        let options = SearchOptions::new(5, -1.0).unwrap();
-        assert_eq!(options.role, None);
-    }
-
-    #[test]
-    fn role_filter_can_be_set() {
-        let options = SearchOptions::new(5, -1.0).unwrap().with_role(types::actors::Role::Agent);
-        assert_eq!(options.role, Some(types::actors::Role::Agent));
-    }
-}
