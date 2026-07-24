@@ -12,7 +12,7 @@ pub use config::{Config, ConsoleConfig};
 pub use context::*;
 
 #[actix_web::main]
-async fn main() -> ::error::Result<()> {
+async fn main() -> error::Result<()> {
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("broker=debug")))

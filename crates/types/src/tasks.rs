@@ -1,3 +1,5 @@
+use crate::actors;
+
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Task {
     pub id: uuid::Uuid,
@@ -108,4 +110,34 @@ impl std::fmt::Display for TaskStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
     }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TaskEvent {
+    pub id: uuid::Uuid,
+    pub tenant_id: uuid::Uuid,
+    pub task_id: uuid::Uuid,
+    pub sequence: u64,
+    #[serde(flatten)]
+    pub data: TaskEventData,
+    pub created_by: actors::ActorPartial,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+pub enum TaskEventData {
+    Started,
+    Status,
+    Progress,
+    TextDelta,
+    Message,
+    Artifact,
+    ToolCall,
+    ToolResult,
+    Warning,
+    Error,
+    Completed,
+    Cancelled,
+    Custom(String),
 }

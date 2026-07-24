@@ -14,7 +14,7 @@ pub use routing::*;
 use crate::context::EventContext;
 
 #[tokio::main]
-async fn main() -> ::error::Result<()> {
+async fn main() -> error::Result<()> {
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("worker=debug")))

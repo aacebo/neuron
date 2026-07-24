@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS chats (
     closed_at       TIMESTAMPTZ,
 
     UNIQUE (id, tenant_id),
-    FOREIGN KEY (created_by_id, tenant_id)
-        REFERENCES actors (id, tenant_id)
+    FOREIGN KEY (tenant_id, created_by_id)
+        REFERENCES actors (tenant_id, id)
         ON DELETE CASCADE
 );
 

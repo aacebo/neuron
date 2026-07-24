@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS tasks (
     id              UUID            PRIMARY KEY,
     trace_id        UUID            NOT NULL,
+    tenant_id       UUID            NOT NULL,
     chat_id         UUID            NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     message_id      UUID            REFERENCES messages(id) ON DELETE CASCADE,
     agent_id        UUID            REFERENCES actors(id) ON DELETE CASCADE,
@@ -14,7 +15,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     started_at      TIMESTAMPTZ,
     ended_at        TIMESTAMPTZ,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+
+    UNIQUE (id, tenant_id)
 );
 
 ALTER TABLE tasks

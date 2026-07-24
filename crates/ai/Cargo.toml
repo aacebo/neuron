@@ -11,10 +11,6 @@ doctest = false
 [lints]
 workspace = true
 
-[features]
-accelerate = ["candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate"]
-mkl = ["candle-core/mkl", "candle-nn/mkl", "candle-transformers/mkl"]
-
 [dependencies]
 serde = { version = "1", features = ["derive", "rc"] }
 serde_json = { version = "1" }
