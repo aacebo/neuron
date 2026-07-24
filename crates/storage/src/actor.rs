@@ -226,10 +226,10 @@ impl<'a> ActorStorage<'a> {
     pub async fn update_secret(&self, id: uuid::Uuid, value: impl std::fmt::Display) -> Result<types::actors::Actor> {
         let result = sqlx::query(
             r#"
-            UPDATE actors
+            UPDATE agents
             SET secret = $2,
                 updated_at = NOW()
-            WHERE id = $1
+            WHERE actor_id = $1
             "#,
         )
         .bind(id)

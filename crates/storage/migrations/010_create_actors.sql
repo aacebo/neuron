@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS actors (
     metadata        JSONB       NOT NULL DEFAULT '{}',
     embedding       VECTOR(384),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (id, tenant_id)
 );
 
 CREATE TABLE IF NOT EXISTS agents (
@@ -22,3 +24,6 @@ CREATE TABLE IF NOT EXISTS agents (
 CREATE UNIQUE INDEX idx_actors_tenant_external_id
 ON actors (tenant_id, external_id)
 WHERE external_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_actors_embedding
+ON actors USING hnsw (embedding vector_cosine_ops);

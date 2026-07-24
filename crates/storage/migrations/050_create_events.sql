@@ -10,3 +10,6 @@ CREATE TABLE IF NOT EXISTS events (
     data            JSONB           NOT NULL,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_events_tenant_cursor
+ON events (tenant_id, created_at, id);
