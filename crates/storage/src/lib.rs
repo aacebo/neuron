@@ -5,7 +5,7 @@ mod annotation;
 mod artifact;
 mod chat;
 mod event;
-mod log;
+pub mod logs;
 mod message;
 mod project;
 mod search;
@@ -16,7 +16,6 @@ pub use annotation::*;
 pub use artifact::*;
 pub use chat::*;
 pub use event::*;
-pub use log::*;
 pub use message::*;
 pub use search::*;
 pub use task::*;
@@ -29,7 +28,7 @@ pub struct Storage<'a> {
     _artifacts: ArtifactStorage<'a>,
     _tasks: TaskStorage<'a>,
     _events: EventStorage<'a>,
-    _logs: LogStorage<'a>,
+    _logs: logs::LogStorage<'a>,
 }
 
 impl<'a> Storage<'a> {
@@ -42,7 +41,7 @@ impl<'a> Storage<'a> {
             _artifacts: ArtifactStorage::new(pool),
             _tasks: TaskStorage::new(pool),
             _events: EventStorage::new(pool),
-            _logs: LogStorage::new(pool),
+            _logs: logs::LogStorage::new(pool),
         }
     }
 
@@ -74,7 +73,7 @@ impl<'a> Storage<'a> {
         &self._events
     }
 
-    pub fn logs(&self) -> &LogStorage<'a> {
+    pub fn logs(&self) -> &logs::LogStorage<'a> {
         &self._logs
     }
 }

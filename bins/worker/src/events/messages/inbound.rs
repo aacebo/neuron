@@ -36,7 +36,7 @@ pub async fn run(ctx: &EventContext<'_>, message: &types::chats::InboundMessage)
                 .storage()
                 .messages()
                 .create(types::chats::Message {
-                    id: uuid::Uuid::new_v4(),
+                    id: uuid::Uuid::now_v7(),
                     chat: chat.into(),
                     content: message.content.clone(),
                     metadata: message.metadata.clone(),
@@ -74,7 +74,7 @@ pub async fn run(ctx: &EventContext<'_>, message: &types::chats::InboundMessage)
             .storage()
             .chats()
             .create(types::chats::Chat {
-                id: uuid::Uuid::new_v4(),
+                id: uuid::Uuid::now_v7(),
                 tenant_id: message.tenant_id,
                 name: message.subject.clone(),
                 created_by: message.sent_by.clone(),
@@ -101,7 +101,7 @@ pub async fn run(ctx: &EventContext<'_>, message: &types::chats::InboundMessage)
             .storage()
             .messages()
             .create(types::chats::Message {
-                id: uuid::Uuid::new_v4(),
+                id: uuid::Uuid::now_v7(),
                 chat: chat.into(),
                 content: message.content.clone(),
                 metadata: message.metadata.clone(),

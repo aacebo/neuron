@@ -40,7 +40,7 @@ pub async fn create(ctx: RequestContext, body: extract::Json<Request>) -> Result
                 .storage()
                 .actors()
                 .create(types::actors::Actor {
-                    id: uuid::Uuid::new_v4(),
+                    id: uuid::Uuid::now_v7(),
                     external_id: Some(body.from.id.clone()),
                     tenant_id: body.tenant_id,
                     role: types::actors::Role::User,

@@ -17,6 +17,7 @@ impl SearchOptions {
             min_similarity,
             role: None,
         };
+
         options.validate()?;
         Ok(options)
     }
@@ -76,4 +77,10 @@ pub fn prepare(embedding: Vec<f32>, options: SearchOptions) -> Result<(Vector, i
     }
 
     Ok((Vector::from(embedding), i64::from(options.limit), options.min_similarity))
+}
+
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+pub struct QueryResult<T> {
+    pub next: Option<uuid::Uuid>,
+    pub items: Vec<T>,
 }

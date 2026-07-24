@@ -16,7 +16,7 @@ pub struct Log {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum Level {
     Trace,

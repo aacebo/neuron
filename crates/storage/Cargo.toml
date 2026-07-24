@@ -11,10 +11,11 @@ doctest = false
 workspace = true
 
 [dependencies]
-uuid = { version = "1.19", features = ["v4", "serde"] }
+uuid = { version = "1.19", features = ["v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["default", "derive"] }
 serde_json = { version = "1" }
+serde_valid = { version = "2" }
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "macros", "uuid", "chrono", "json"] }
 pgvector = { version = "0.4", features = ["sqlx"] }
 

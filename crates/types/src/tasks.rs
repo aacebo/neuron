@@ -29,7 +29,7 @@ impl Task {
         let now = chrono::Utc::now();
 
         Self {
-            id: uuid::Uuid::new_v4(),
+            id: uuid::Uuid::now_v7(),
             name: name.into(),
             max_attempts: 3,
             created_at: now,

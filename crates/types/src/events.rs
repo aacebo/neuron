@@ -2,7 +2,7 @@ use crate::{actors, chats, resources, tasks};
 
 pub fn new(tenant_id: uuid::Uuid, trace_id: uuid::Uuid, key: impl std::fmt::Display, data: impl Into<Data>) -> Event {
     Event {
-        id: uuid::Uuid::new_v4(),
+        id: uuid::Uuid::now_v7(),
         tenant_id,
         trace_id,
         key: key.to_string(),

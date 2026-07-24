@@ -222,9 +222,9 @@ where
             .get(REQUEST_ID_HEADER)
             .and_then(|v| v.to_str().ok())
             .map(String::from)
-            .unwrap_or_else(|| uuid::Uuid::new_v4().to_string())
+            .unwrap_or_else(|| uuid::Uuid::now_v7().to_string())
             .parse()
-            .unwrap_or_else(|_| uuid::Uuid::new_v4());
+            .unwrap_or_else(|_| uuid::Uuid::now_v7());
 
         let span = tracing::info_span!(
             "http.request",

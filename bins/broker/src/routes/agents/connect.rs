@@ -130,7 +130,7 @@ async fn run_session(
                     }
                 }
 
-                let trace_id = trace_id.unwrap_or_else(uuid::Uuid::new_v4);
+                let trace_id = trace_id.unwrap_or_else(uuid::Uuid::now_v7);
                 tracing::debug!(%trace_id, ?chat_id, "received agent message command");
                 let message = types::chats::InboundMessage {
                     tenant_id: actor.tenant_id,

@@ -11,14 +11,15 @@ CREATE TABLE IF NOT EXISTS logs (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_logs_trace_created
-ON logs (trace_id, created_at);
+CREATE INDEX idx_logs_trace_id
+ON logs (trace_id, id DESC);
 
-CREATE INDEX idx_logs_task_created
-ON logs (task_id, created_at);
+CREATE INDEX idx_logs_task_id
+ON logs (task_id, id DESC)
+WHERE task_id IS NOT NULL;
 
-CREATE INDEX idx_logs_tenant_level_created
-ON logs (tenant_id, level, created_at DESC);
+CREATE INDEX idx_logs_tenant_level_id
+ON logs (tenant_id, level, id DESC);
 
-CREATE INDEX idx_logs_created_at_brin
-ON logs USING BRIN (created_at);
+CREATE INDEX idx_logs_tenant_id
+ON logs (tenant_id, id DESC);
